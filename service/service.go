@@ -196,7 +196,7 @@ func (engine *ECE) Run(address string) {
 	server.Wait()
 
 }
-
+// UnmarshalWaf unmarshals the log json into a WafEntry Object
 func UnmarshalWaf(message string) (waf WafEntry, err error) {
 	err = json.Unmarshal([]byte(message), &waf)
 	if waf.EventType != "waf" {
@@ -206,6 +206,7 @@ func UnmarshalWaf(message string) (waf WafEntry, err error) {
 	return waf, err
 }
 
+// UnmarshalWeb unmarshals the log json into a WebEntry Object
 func UnmarshalWeb(message string) (web WebEntry, err error) {
 	err = json.Unmarshal([]byte(message), &web)
 	if web.EventType != "req" {
