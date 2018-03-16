@@ -19,24 +19,24 @@ type Event struct {
 
 // WafEntry  a struct representing a Waf Log Entry
 type WafEntry struct {
-	EventType     string `json:"event_type"`
-	RequestId     string `json:"request_id"`
-	RuleId			  string `json:"rule_id"`
-	Severity		  string `json:"severity"`
-	AnomalyScore  string `json:"anomaly_score"`
-	LogData				string `json:"logdata"`
-	WafMessage		string `json:"waf_message"`
+	EventType    string `json:"event_type"`
+	RequestId    string `json:"request_id"`
+	RuleId       string `json:"rule_id"`
+	Severity     string `json:"severity"`
+	AnomalyScore string `json:"anomaly_score"`
+	LogData      string `json:"logdata"`
+	WafMessage   string `json:"waf_message"`
 }
 
 // RequestEntry a struct representing a Web Event
 type RequestEntry struct {
-	EventType 					 string `json:"event_type"`
-	ServiceId						 string `json:"service_id"`
-	RequestId 					 string `json:"request_id"`
-	StartTime 					 string `json:"start_time"`
-	FastlyInfo					 string `json:"fastly_info"`
-	Datacenter			  	 string `json:"datacenter"`
-	ClientIp						 string `json:"client_ip"`
+	EventType            string `json:"event_type"`
+	ServiceId            string `json:"service_id"`
+	RequestId            string `json:"request_id"`
+	StartTime            string `json:"start_time"`
+	FastlyInfo           string `json:"fastly_info"`
+	Datacenter           string `json:"datacenter"`
+	ClientIp             string `json:"client_ip"`
 	ReqMethod            string `json:"req_method"`
 	ReqURI               string `json:"req_uri"`
 	ReqHHost             string `json:"req_h_host"`
@@ -229,6 +229,7 @@ func (engine *ECE) Run(address string) {
 	server.Wait()
 
 }
+
 // UnmarshalWaf unmarshals the log json into a WafEntry Object
 func UnmarshalWaf(message string) (waf WafEntry, err error) {
 	err = json.Unmarshal([]byte(message), &waf)
