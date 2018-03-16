@@ -14,20 +14,53 @@ import (
 // Event Struct representing an entire firewall event, containing generally 1 web event and 0 or more waf events
 type Event struct {
 	WafEntries []WafEntry
-	WebEntries []WebEntry
+	WebEntries []RequestEntry
 }
 
 // WafEntry  a struct representing a Waf Log Entry
 type WafEntry struct {
-	RequestId    string `json:"request_id"`
-	EventType    string `json:"event_type"`
-	AnomalyScore string `json:"anomaly_score"`
+	EventType     string `json:"event_type"`
+	RequestId     string `json:"request_id"`
+	RuleId			  string `json:"rule_id"`
+	Severity		  string `json:"severity"`
+	AnomalyScore  string `json:"anomaly_score"`
+	LogData				string `json:"logdata"`
+	WafMessage		string `json:"waf_message"`
 }
 
-// WebEntry a struct representing a Web Event
-type WebEntry struct {
-	RequestId string `json:"request_id"`
-	EventType string `json:"event_type"`
+// RequestEntry a struct representing a Web Event
+type RequestEntry struct {
+	EventType 					 string `json:"event_type"`
+	ServiceId						 string `json:"service_id"`
+	RequestId 					 string `json:"request_id"`
+	StartTime 					 string `json:"start_time"`
+	FastlyInfo					 string `json:"fastly_info"`
+	Datacenter			  	 string `json:"datacenter"`
+	ClientIp						 string `json:"client_ip"`
+	ReqMethod            string `json:"req_method"`
+	ReqURI               string `json:"req_uri"`
+	ReqHHost             string `json:"req_h_host"`
+	ReqHUserAgent        string `json:"req_h_user_agent"`
+	ReqHAcceptEncoding   string `json:"req_h_accept_encoding"`
+	ReqHeaderBytes       string `json:"req_header_bytes"`
+	ReqBodyBytes         string `json:"req_body_bytes"`
+	WafLogged            string `json:"waf_logged"`
+	WafBlocked           string `json:"waf_blocked"`
+	WafFailures          string `json:"waf_failures"`
+	WafExecuted          string `json:"waf_executed"`
+	AnomalyScore         string `json:"anomaly_score"`
+	SqlInjectionScore    string `json:"sql_injection_score"`
+	RfiScore             string `json:"rfi_score"`
+	LfiScore             string `json:"lfi_score"`
+	RceScore             string `json:"rce_score"`
+	PhpInjectionScore    string `json:"php_injection_score"`
+	SessionFixationScore string `json:"session_fixation_score"`
+	HTTPViolationScore   string `json:"http_violation_score"`
+	XSSScore             string `json:"xss_score"`
+	RespStatus           string `json:"resp_status"`
+	RespBytes            string `json:"resp_bytes"`
+	RespHeaderBytes      string `json:"resp_header_bytes"`
+	RespBodyBytes        string `json:"resp_body_bytes"`
 }
 
 // ECE The Event Correlation Engine itself
@@ -94,41 +127,41 @@ func (engine *ECE) RemoveEvent(reqId string) (err error) {
 // AddEvent parses the event text, then looks it up in the internal cache.  If it's there, it adds the appropriate record to the existing event.  If not, it creates one and sets it's timeout.
 func (engine *ECE) AddEvent(message string) (err error) {
 	waf, err := UnmarshalWaf(message) // Try to unmarshal the message into a WAF event
-	if err != nil {                   // It didn't unmarshal.  It's either a web event, or garbage
-		web, err := UnmarshalWeb(message)
+	if err != nil {                   // It didn't unmarshal.  It's either a req event, or garbage
+		req, err := UnmarshalWeb(message)
 
-		if err != nil { // It didn't unmarshal as a web event either.
+		if err != nil { // It didn't unmarshal as a req event either.
 			err = fmt.Errorf("unparsable data: %s", message)
 			return err
 		}
 
 		//log.Printf("WEb Event ID: %q", waf.RequestId)
 
-		event := engine.RetrieveEvent(web.RequestId)
+		event := engine.RetrieveEvent(req.RequestId)
 
 		if event == nil { // It doesn't exist, create it and set it's lifetime
 			event := Event{
 				WafEntries: make([]WafEntry, 0),
-				WebEntries: make([]WebEntry, 0),
+				WebEntries: make([]RequestEntry, 0),
 			}
 
-			event.WebEntries = append(event.WebEntries, web)
+			event.WebEntries = append(event.WebEntries, req)
 
-			//fmt.Printf("New Web %q\n", web.RequestId)
+			//fmt.Printf("New Web %q\n", req.RequestId)
 			engine.Lock()
-			engine.Events[web.RequestId] = &event
+			engine.Events[req.RequestId] = &event
 			engine.Unlock()
 
 			// then set it to notify after ttl expires
-			go DelayNotify(engine, web.RequestId)
+			go DelayNotify(engine, req.RequestId)
 
 			return err
 		}
 
-		// it does exist, add to it's web list
+		// it does exist, add to it's req list
 		engine.Lock()
-		//fmt.Printf("\tAdding Web to %q\n", web.RequestId)
-		event.WebEntries = append(event.WebEntries, web)
+		//fmt.Printf("\tAdding Web to %q\n", req.RequestId)
+		event.WebEntries = append(event.WebEntries, req)
 		engine.Unlock()
 
 		return err
@@ -140,7 +173,7 @@ func (engine *ECE) AddEvent(message string) (err error) {
 	if event == nil { // It doesn't exist, create it and set it's lifetime
 		event := Event{
 			WafEntries: make([]WafEntry, 0),
-			WebEntries: make([]WebEntry, 0),
+			WebEntries: make([]RequestEntry, 0),
 		}
 
 		event.WafEntries = append(event.WafEntries, waf)
@@ -206,11 +239,11 @@ func UnmarshalWaf(message string) (waf WafEntry, err error) {
 	return waf, err
 }
 
-// UnmarshalWeb unmarshals the log json into a WebEntry Object
-func UnmarshalWeb(message string) (web WebEntry, err error) {
+// UnmarshalWeb unmarshals the log json into a RequestEntry Object
+func UnmarshalWeb(message string) (web RequestEntry, err error) {
 	err = json.Unmarshal([]byte(message), &web)
 	if web.EventType != "req" {
-		return WebEntry{}, errors.New("Not a web entry")
+		return RequestEntry{}, errors.New("Not a web entry")
 	}
 	return web, err
 }
