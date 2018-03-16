@@ -1,9 +1,9 @@
 package service
 
 import (
-	"testing"
 	"fmt"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func TestUnmarshalWaf(t *testing.T) {
@@ -39,5 +39,3 @@ func TestUnmarshalWeb(t *testing.T) {
 	}
 
 }
-
-

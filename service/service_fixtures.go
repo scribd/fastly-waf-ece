@@ -11,8 +11,8 @@ func TestWebEntryMessage() string {
 
 func TestWafEntry() WafEntry {
 	return WafEntry{
-		RequestId: "65df6a015f5a85fdf3559acad090ce1c567cbceacefea4baa476406b1d876392",
-		EventType: "waf",
+		RequestId:    "65df6a015f5a85fdf3559acad090ce1c567cbceacefea4baa476406b1d876392",
+		EventType:    "waf",
 		AnomalyScore: "0",
 	}
 }
@@ -23,4 +23,3 @@ func TestWebEntry() WebEntry {
 		EventType: "req",
 	}
 }
-

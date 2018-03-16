@@ -1,14 +1,14 @@
 package service
 
 import (
-	"sync"
-	"log"
-	"time"
-	"os"
-	"fmt"
-	"gopkg.in/mcuadros/go-syslog.v2"
 	"encoding/json"
+	"fmt"
 	"github.com/pkg/errors"
+	"gopkg.in/mcuadros/go-syslog.v2"
+	"log"
+	"os"
+	"sync"
+	"time"
 )
 
 // Event Struct representing an entire firewall event, containing generally 1 web event and 0 or more waf events
@@ -19,10 +19,9 @@ type Event struct {
 
 // WafEntry  a struct representing a Waf Log Entry
 type WafEntry struct {
-	RequestId 		string `json:"request_id"`
-	EventType 		string `json:"event_type"`
-	AnomalyScore 	string `json:"anomaly_score"`
-
+	RequestId    string `json:"request_id"`
+	EventType    string `json:"event_type"`
+	AnomalyScore string `json:"anomaly_score"`
 }
 
 // WebEntry a struct representing a Web Event
@@ -34,10 +33,10 @@ type WebEntry struct {
 // The Event Correlation Engine itself
 type ECE struct {
 	sync.RWMutex
-	Events 		map[string]*Event
-	logger 		*log.Logger
-	Ttl 			time.Duration
-	Debug 		bool
+	Events map[string]*Event
+	logger *log.Logger
+	Ttl    time.Duration
+	Debug  bool
 }
 
 // NewECE  Creates a new ECE.
@@ -45,7 +44,7 @@ func NewECE(maxAge time.Duration) *ECE {
 	logger := log.New(os.Stderr, "", 0)
 
 	a := &ECE{
-		Ttl: maxAge,
+		Ttl:    maxAge,
 		logger: logger,
 		Events: make(map[string]*Event),
 	}
@@ -54,7 +53,7 @@ func NewECE(maxAge time.Duration) *ECE {
 }
 
 // RetrieveEvent returns the event for the request id, or nil if it doesn't exist
-func (engine *ECE) RetrieveEvent(reqId string) (*Event) {
+func (engine *ECE) RetrieveEvent(reqId string) *Event {
 	engine.RLock()
 	e, exists := engine.Events[reqId]
 	engine.RUnlock()
@@ -94,11 +93,11 @@ func (engine *ECE) RemoveEvent(reqId string) (err error) {
 
 // AddEvent parses the event text, then looks it up in the internal cache.  If it's there, it adds the appropriate record to the existing event.  If not, it creates one and sets it's timeout.
 func (engine *ECE) AddEvent(message string) (err error) {
-	waf, err := UnmarshalWaf(message)							// Try to unmarshal the message into a WAF event
-	if err != nil { 															// It didn't unmarshal.  It's either a web event, or garbage
+	waf, err := UnmarshalWaf(message) // Try to unmarshal the message into a WAF event
+	if err != nil {                   // It didn't unmarshal.  It's either a web event, or garbage
 		web, err := UnmarshalWeb(message)
 
-		if err != nil {															// It didn't unmarshal as a web event either.
+		if err != nil { // It didn't unmarshal as a web event either.
 			err = fmt.Errorf("unparsable data: %s", message)
 			return err
 		}
@@ -107,7 +106,7 @@ func (engine *ECE) AddEvent(message string) (err error) {
 
 		event := engine.RetrieveEvent(web.RequestId)
 
-		if event == nil {		// It doesn't exist, create it and set it's lifetime
+		if event == nil { // It doesn't exist, create it and set it's lifetime
 			event := Event{
 				WafEntries: make([]WafEntry, 0),
 				WebEntries: make([]WebEntry, 0),
@@ -138,7 +137,7 @@ func (engine *ECE) AddEvent(message string) (err error) {
 	// Ok, it's a Waf event.  Process it as such.
 	event := engine.RetrieveEvent(waf.RequestId)
 
-	if event == nil {		// It doesn't exist, create it and set it's lifetime
+	if event == nil { // It doesn't exist, create it and set it's lifetime
 		event := Event{
 			WafEntries: make([]WafEntry, 0),
 			WebEntries: make([]WebEntry, 0),
@@ -167,7 +166,7 @@ func (engine *ECE) AddEvent(message string) (err error) {
 }
 
 // Run runs the syslog server that waits for events
-func (engine *ECE ) Run(address string){
+func (engine *ECE) Run(address string) {
 	channel := make(syslog.LogPartsChannel)
 	handler := syslog.NewChannelHandler(channel)
 
@@ -226,4 +225,3 @@ func DelayNotify(ece *ECE, reqId string) {
 		log.Printf("Error writing: %s", err)
 	}
 }
-

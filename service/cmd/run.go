@@ -15,9 +15,9 @@
 package cmd
 
 import (
+	"github.com/scribd/fastly-waf-ece/service"
 	"github.com/spf13/cobra"
 	"time"
-	"github.com/scribd/fastly-waf-ece/service"
 )
 
 // runCmd represents the run command

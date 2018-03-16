@@ -59,7 +59,7 @@ func init() {
 	// will be global for your application.
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.ece.yaml)")
 
-	rootCmd.PersistentFlags().StringVarP(&address, "address", "a", "","address to listen upon")
+	rootCmd.PersistentFlags().StringVarP(&address, "address", "a", "", "address to listen upon")
 	rootCmd.PersistentFlags().IntVarP(&ttl, "ttl", "t", 15, "Time to wait for messages before flushing them downstream.")
 	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "Trigger debug information.")
 
