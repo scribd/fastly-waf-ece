@@ -1,3 +1,13 @@
+[![Current Release](https://img.shields.io/github/release/scribd/fastly-waf-ece.svg)](https://img.shields.io/github/release/scribd/fastly-waf-ece.svg)
+
+[![Circle CI](https://circleci.com/gh/scribd/fastly-waf-ece.svg?style=shield)](https://circleci.com/gh/scribd/fastly-waf-ece)
+
+[![Go Report Card](https://goreportcard.com/badge/github.com/scribd/fastly-waf-ece)](https://goreportcard.com/report/github.com/scribd/fastly-waf-ece)
+
+[![Go Doc](https://img.shields.io/badge/godoc-reference-blue.svg?style=flat-square)](http://godoc.org/github.com/scribd/fastly-waf-ece)
+
+<!--[![Coverage Status](https://coveralls.io/repos/github/scribd/fastly-waf-ece/badge.svg?branch=master&service=github)](https://coveralls.io/github/scribd/fastly-waf-ece?branch=master)-->
+
 # Description
 
 Fastly WAF events come in two flavors.  The first is a 'waf' event, which means something in an incoming request triggered an alarm.  You'll generally see one of these for every rule that was violated.
