@@ -30,7 +30,7 @@ type WebEntry struct {
 	EventType string `json:"event_type"`
 }
 
-// The Event Correlation Engine itself
+// ECE The Event Correlation Engine itself
 type ECE struct {
 	sync.RWMutex
 	Events map[string]*Event
