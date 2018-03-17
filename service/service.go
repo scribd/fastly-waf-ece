@@ -205,7 +205,7 @@ func (engine *ECE) WriteEvent(reqId string) (err error) {
 		return err
 	}
 
-	log.Println(string(outputBytes))
+	fmt.Println(string(outputBytes))
 
 	err = engine.RemoveEvent(reqId)
 	if err != nil {
