@@ -13,8 +13,8 @@ import (
 
 // Event Struct representing an entire firewall event, containing generally 1 web event and 0 or more waf events
 type Event struct {
-	WafEntries []WafEntry
-	WebEntries []RequestEntry
+	WafEntries     []WafEntry
+	RequestEntries []RequestEntry
 }
 
 // WafEntry  a struct representing a Waf Log Entry
@@ -63,6 +63,48 @@ type RequestEntry struct {
 	RespBodyBytes        string `json:"resp_body_bytes"`
 }
 
+type OutputEvent struct {
+	ServiceId            string `json:"service_id"`
+	RequestId            string `json:"request_id"`
+	StartTime            string `json:"start_time"`
+	FastlyInfo           string `json:"fastly_info"`
+	Datacenter           string `json:"datacenter"`
+	ClientIp             string `json:"client_ip"`
+	ReqMethod            string `json:"req_method"`
+	ReqURI               string `json:"req_uri"`
+	ReqHHost             string `json:"req_h_host"`
+	ReqHUserAgent        string `json:"req_h_user_agent"`
+	ReqHAcceptEncoding   string `json:"req_h_accept_encoding"`
+	ReqHeaderBytes       string `json:"req_header_bytes"`
+	ReqBodyBytes         string `json:"req_body_bytes"`
+	WafLogged            string `json:"waf_logged"`
+	WafBlocked           string `json:"waf_blocked"`
+	WafFailures          string `json:"waf_failures"`
+	WafExecuted          string `json:"waf_executed"`
+	AnomalyScore         string `json:"anomaly_score"`
+	SqlInjectionScore    string `json:"sql_injection_score"`
+	RfiScore             string `json:"rfi_score"`
+	LfiScore             string `json:"lfi_score"`
+	RceScore             string `json:"rce_score"`
+	PhpInjectionScore    string `json:"php_injection_score"`
+	SessionFixationScore string `json:"session_fixation_score"`
+	HTTPViolationScore   string `json:"http_violation_score"`
+	XSSScore             string `json:"xss_score"`
+	RespStatus           string `json:"resp_status"`
+	RespBytes            string `json:"resp_bytes"`
+	RespHeaderBytes      string `json:"resp_header_bytes"`
+	RespBodyBytes        string `json:"resp_body_bytes"`
+	WafEvents						 []OutputWaf `json:"waf_events"`
+}
+
+type OutputWaf struct {
+	RuleId       string `json:"rule_id"`
+	Severity     string `json:"severity"`
+	AnomalyScore string `json:"anomaly_score"`
+	LogData      string `json:"logdata"`
+	WafMessage   string `json:"waf_message"`
+}
+
 // ECE The Event Correlation Engine itself
 type ECE struct {
 	sync.RWMutex
@@ -102,10 +144,68 @@ func (engine *ECE) RetrieveEvent(reqId string) *Event {
 func (engine *ECE) WriteEvent(reqId string) (err error) {
 	event := engine.RetrieveEvent(reqId)
 
-	numWafs := len(event.WafEntries)
-	numWebs := len(event.WebEntries)
+	var outputEvent OutputEvent
 
-	log.Printf("Request: %q  Request Entries: %d Waf Entries: %d", reqId, numWebs, numWafs)
+	if len(event.RequestEntries) > 0 {
+		outputEvent = OutputEvent{
+			ServiceId: event.RequestEntries[0].ServiceId,
+			RequestId: event.RequestEntries[0].RequestId,
+			StartTime: event.RequestEntries[0].StartTime,
+			FastlyInfo: event.RequestEntries[0].FastlyInfo,
+			Datacenter: event.RequestEntries[0].Datacenter,
+			ClientIp: event.RequestEntries[0].ClientIp,
+			ReqMethod: event.RequestEntries[0].ReqMethod,
+			ReqURI: event.RequestEntries[0].ReqURI,
+			ReqHHost: event.RequestEntries[0].ReqHHost,
+			ReqHUserAgent: event.RequestEntries[0].ReqHUserAgent,
+			ReqHAcceptEncoding: event.RequestEntries[0].ReqHAcceptEncoding,
+			ReqHeaderBytes: event.RequestEntries[0].ReqHeaderBytes,
+			ReqBodyBytes: event.RequestEntries[0].ReqBodyBytes,
+			WafLogged: event.RequestEntries[0].WafLogged,
+			WafBlocked: event.RequestEntries[0].WafBlocked,
+			WafFailures: event.RequestEntries[0].WafFailures,
+			WafExecuted: event.RequestEntries[0].WafExecuted,
+			AnomalyScore: event.RequestEntries[0].AnomalyScore,
+			SqlInjectionScore: event.RequestEntries[0].SqlInjectionScore,
+			RfiScore: event.RequestEntries[0].RfiScore,
+			LfiScore: event.RequestEntries[0].LfiScore,
+			RceScore: event.RequestEntries[0].RceScore,
+			PhpInjectionScore: event.RequestEntries[0].PhpInjectionScore,
+			SessionFixationScore: event.RequestEntries[0].SessionFixationScore,
+			HTTPViolationScore: event.RequestEntries[0].HTTPViolationScore,
+			XSSScore: event.RequestEntries[0].XSSScore,
+			RespStatus: event.RequestEntries[0].RespStatus,
+			RespBytes: event.RequestEntries[0].RespBytes,
+			RespHeaderBytes: event.RequestEntries[0].RespHeaderBytes,
+			RespBodyBytes: event.RequestEntries[0].RespBodyBytes,
+			WafEvents: make([]OutputWaf, 0),
+		}
+	} else {
+		outputEvent = OutputEvent{
+			WafEvents: make([]OutputWaf, 0),
+		}
+	}
+
+	for _, wafEvent := range event.WafEntries {
+		wafOut := OutputWaf{
+			RuleId: wafEvent.RuleId,
+			Severity: wafEvent.Severity,
+			AnomalyScore: wafEvent.AnomalyScore,
+			LogData: wafEvent.LogData,
+			WafMessage:wafEvent.WafMessage,
+		}
+
+		outputEvent.WafEvents = append(outputEvent.WafEvents, wafOut)
+	}
+
+	outputBytes, err := json.Marshal(outputEvent)
+
+	if err != nil {
+		err = errors.Wrapf(err, "failed to marshall output for req id %q", reqId)
+		return err
+	}
+
+	log.Println(string(outputBytes))
 
 	err = engine.RemoveEvent(reqId)
 	if err != nil {
@@ -141,11 +241,11 @@ func (engine *ECE) AddEvent(message string) (err error) {
 
 		if event == nil { // It doesn't exist, create it and set it's lifetime
 			event := Event{
-				WafEntries: make([]WafEntry, 0),
-				WebEntries: make([]RequestEntry, 0),
+				WafEntries:     make([]WafEntry, 0),
+				RequestEntries: make([]RequestEntry, 0),
 			}
 
-			event.WebEntries = append(event.WebEntries, req)
+			event.RequestEntries = append(event.RequestEntries, req)
 
 			//fmt.Printf("New Web %q\n", req.RequestId)
 			engine.Lock()
@@ -161,7 +261,7 @@ func (engine *ECE) AddEvent(message string) (err error) {
 		// it does exist, add to it's req list
 		engine.Lock()
 		//fmt.Printf("\tAdding Web to %q\n", req.RequestId)
-		event.WebEntries = append(event.WebEntries, req)
+		event.RequestEntries = append(event.RequestEntries, req)
 		engine.Unlock()
 
 		return err
@@ -172,8 +272,8 @@ func (engine *ECE) AddEvent(message string) (err error) {
 
 	if event == nil { // It doesn't exist, create it and set it's lifetime
 		event := Event{
-			WafEntries: make([]WafEntry, 0),
-			WebEntries: make([]RequestEntry, 0),
+			WafEntries:     make([]WafEntry, 0),
+			RequestEntries: make([]RequestEntry, 0),
 		}
 
 		event.WafEntries = append(event.WafEntries, waf)
