@@ -18,6 +18,9 @@ import (
 	"github.com/scribd/fastly-waf-ece/service"
 	"github.com/spf13/cobra"
 	"time"
+	"os"
+	"path"
+	"log"
 )
 
 // runCmd represents the run command
@@ -29,7 +32,19 @@ Runs the ECE on the configured port.
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		engine := service.NewECE(time.Duration(ttl) * time.Second)
+		if _, ok := os.Stat(logFile); os.IsNotExist(ok) {
+			logDir := path.Base(logFile)
+			err := os.MkdirAll(logDir, 0755)
+			if err != nil {
+				log.Fatalf("Could not create log dir %s: %s", logDir, err)
+			}
+		}
+
+		if address == "" {
+			log.Fatalln("Cannot run without a listen address (-a).  Run fastly-waf-ece help for more info.")
+		}
+
+		engine := service.NewECE(time.Duration(ttl) * time.Second, logFile, maxLogSize, maxLogBackups, maxLogAge, logCompress)
 		engine.Debug = debug
 
 		engine.Run(address)

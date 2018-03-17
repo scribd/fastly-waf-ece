@@ -27,6 +27,11 @@ var cfgFile string
 var address string
 var ttl int
 var debug bool
+var logFile string
+var maxLogSize int
+var maxLogBackups int
+var maxLogAge int
+var logCompress bool
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -60,8 +65,15 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.ece.yaml)")
 
 	rootCmd.PersistentFlags().StringVarP(&address, "address", "a", "", "address to listen upon")
-	rootCmd.PersistentFlags().IntVarP(&ttl, "ttl", "t", 15, "Time to wait for messages before flushing them downstream.")
-	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "Trigger debug information.")
+	rootCmd.PersistentFlags().IntVarP(&ttl, "ttl", "t", 20, "Time to wait for messages before flushing them downstream")
+	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "Debug.  Echos incoming logs to STEDERR")
+	rootCmd.PersistentFlags().StringVarP(&logFile, "logFile", "l", "/var/log/fastly-waf-ece/events.log", "Log file path")
+	rootCmd.PersistentFlags().IntVarP(&maxLogSize, "logSize", "s", 500, "max log file size")
+	rootCmd.PersistentFlags().IntVarP(&maxLogBackups, "logBackups", "b", 5, "max log file backups")
+	rootCmd.PersistentFlags().IntVarP(&maxLogAge, "logAge", "g", 28, "max log file age")
+	rootCmd.PersistentFlags().BoolVarP(&logCompress, "logCompress", "c", false, "Compress logs")
+
+
 
 }
 

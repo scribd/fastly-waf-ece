@@ -1,0 +1,22 @@
+{
+  "version": "0.1.0",
+  "package": "github.com/scribd/fastly-waf-ece",
+  "description": "",
+  "repository": "http://artifacts.lo/artifactory/generic-local",
+  "building": {
+    "targets": [
+      "linux/amd64"
+    ]
+  },
+  "publishing": {
+    "skip-signing": true,
+    "targets": [
+      {
+        "src": "fastly-waf-ece_linux_amd64",
+        "dst": "{{.Repository}}/gomason/{{.Version}}/linux/amd64/gomason",
+        "sig": true,
+        "checksums": false
+      }
+    ]
+  }
+}

@@ -9,6 +9,7 @@ import (
 	"os"
 	"sync"
 	"time"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 // Event Struct representing an entire firewall event, containing generally 1 web event and 0 or more waf events
@@ -108,19 +109,27 @@ type OutputWaf struct {
 // ECE The Event Correlation Engine itself
 type ECE struct {
 	sync.RWMutex
-	Events map[string]*Event
-	logger *log.Logger
-	Ttl    time.Duration
-	Debug  bool
+	Events 	map[string]*Event
+	logger	*log.Logger
+	Ttl    	time.Duration
+	Debug  	bool
 }
 
 // NewECE  Creates a new ECE.
-func NewECE(maxAge time.Duration) *ECE {
-	logger := log.New(os.Stderr, "", 0)
+func NewECE(maxAge time.Duration, logFile string, maxLogSize int, maxLogBackups int, maxLogAge int, logCompress bool) *ECE {
+	logObj := log.New(os.Stdout, "", 0)
+
+	logObj.SetOutput(&lumberjack.Logger{
+		Filename: logFile,
+		MaxSize: maxLogSize,
+		MaxBackups: maxLogBackups,
+		MaxAge: maxLogAge,
+		Compress: logCompress,
+	})
 
 	a := &ECE{
 		Ttl:    maxAge,
-		logger: logger,
+		logger:	logObj,
 		Events: make(map[string]*Event),
 	}
 
@@ -205,7 +214,7 @@ func (engine *ECE) WriteEvent(reqId string) (err error) {
 		return err
 	}
 
-	fmt.Println(string(outputBytes))
+	engine.logger.Println(string(outputBytes))
 
 	err = engine.RemoveEvent(reqId)
 	if err != nil {
@@ -309,15 +318,15 @@ func (engine *ECE) Run(address string) {
 	server.ListenTCP(address)
 	server.Boot()
 
-	log.Printf("Fastly WAF Event Correlation Engine starting!")
-	log.Printf("Listening on %s", address)
-	log.Printf("TTL: %f seconds", engine.Ttl.Seconds())
+	fmt.Fprint(os.Stderr, "Fastly WAF Event Correlation Engine starting!\n")
+	fmt.Fprintf(os.Stderr,"Listening on %s\n", address)
+	fmt.Fprintf(os.Stderr, "TTL: %f seconds\n", engine.Ttl.Seconds())
 
 	go func(channel syslog.LogPartsChannel) {
 		for logParts := range channel {
 			message := logParts["message"].(string)
 			if engine.Debug {
-				fmt.Println(message)
+				fmt.Fprintln(os.Stderr, message)
 			}
 			err := engine.AddEvent(message)
 			if err != nil {

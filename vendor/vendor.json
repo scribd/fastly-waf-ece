@@ -49,6 +49,12 @@
 			"path": "gopkg.in/mcuadros/go-syslog.v2/internal/syslogparser/rfc5424",
 			"revision": "9cf13b7327c0e153da3cba3540c2ae2b879c3859",
 			"revisionTime": "2016-10-11T17:43:29Z"
+		},
+		{
+			"checksumSHA1": "TM3Neoy1xRAKyZYMGzKc41sDFW4=",
+			"path": "gopkg.in/natefinch/lumberjack.v2",
+			"revision": "a96e63847dc3c67d17befa69c303767e2f84e54f",
+			"revisionTime": "2017-05-31T16:03:50Z"
 		}
 	],
 	"rootPath": "github.com/scribd/fastly-waf-ece"
