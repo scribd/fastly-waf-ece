@@ -73,8 +73,6 @@ func init() {
 	rootCmd.PersistentFlags().IntVarP(&maxLogAge, "logAge", "g", 28, "max log file age")
 	rootCmd.PersistentFlags().BoolVarP(&logCompress, "logCompress", "c", false, "Compress logs")
 
-
-
 }
 
 // initConfig reads in config file and ENV variables if set.

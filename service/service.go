@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	"gopkg.in/mcuadros/go-syslog.v2"
+	"gopkg.in/natefinch/lumberjack.v2"
 	"log"
 	"os"
 	"sync"
 	"time"
-	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 // Event Struct representing an entire firewall event, containing generally 1 web event and 0 or more waf events
@@ -65,37 +65,37 @@ type RequestEntry struct {
 }
 
 type OutputEvent struct {
-	ServiceId            string `json:"service_id"`
-	RequestId            string `json:"request_id"`
-	StartTime            string `json:"start_time"`
-	FastlyInfo           string `json:"fastly_info"`
-	Datacenter           string `json:"datacenter"`
-	ClientIp             string `json:"client_ip"`
-	ReqMethod            string `json:"req_method"`
-	ReqURI               string `json:"req_uri"`
-	ReqHHost             string `json:"req_h_host"`
-	ReqHUserAgent        string `json:"req_h_user_agent"`
-	ReqHAcceptEncoding   string `json:"req_h_accept_encoding"`
-	ReqHeaderBytes       string `json:"req_header_bytes"`
-	ReqBodyBytes         string `json:"req_body_bytes"`
-	WafLogged            string `json:"waf_logged"`
-	WafBlocked           string `json:"waf_blocked"`
-	WafFailures          string `json:"waf_failures"`
-	WafExecuted          string `json:"waf_executed"`
-	AnomalyScore         string `json:"anomaly_score"`
-	SqlInjectionScore    string `json:"sql_injection_score"`
-	RfiScore             string `json:"rfi_score"`
-	LfiScore             string `json:"lfi_score"`
-	RceScore             string `json:"rce_score"`
-	PhpInjectionScore    string `json:"php_injection_score"`
-	SessionFixationScore string `json:"session_fixation_score"`
-	HTTPViolationScore   string `json:"http_violation_score"`
-	XSSScore             string `json:"xss_score"`
-	RespStatus           string `json:"resp_status"`
-	RespBytes            string `json:"resp_bytes"`
-	RespHeaderBytes      string `json:"resp_header_bytes"`
-	RespBodyBytes        string `json:"resp_body_bytes"`
-	WafEvents						 []OutputWaf `json:"waf_events"`
+	ServiceId            string      `json:"service_id"`
+	RequestId            string      `json:"request_id"`
+	StartTime            string      `json:"start_time"`
+	FastlyInfo           string      `json:"fastly_info"`
+	Datacenter           string      `json:"datacenter"`
+	ClientIp             string      `json:"client_ip"`
+	ReqMethod            string      `json:"req_method"`
+	ReqURI               string      `json:"req_uri"`
+	ReqHHost             string      `json:"req_h_host"`
+	ReqHUserAgent        string      `json:"req_h_user_agent"`
+	ReqHAcceptEncoding   string      `json:"req_h_accept_encoding"`
+	ReqHeaderBytes       string      `json:"req_header_bytes"`
+	ReqBodyBytes         string      `json:"req_body_bytes"`
+	WafLogged            string      `json:"waf_logged"`
+	WafBlocked           string      `json:"waf_blocked"`
+	WafFailures          string      `json:"waf_failures"`
+	WafExecuted          string      `json:"waf_executed"`
+	AnomalyScore         string      `json:"anomaly_score"`
+	SqlInjectionScore    string      `json:"sql_injection_score"`
+	RfiScore             string      `json:"rfi_score"`
+	LfiScore             string      `json:"lfi_score"`
+	RceScore             string      `json:"rce_score"`
+	PhpInjectionScore    string      `json:"php_injection_score"`
+	SessionFixationScore string      `json:"session_fixation_score"`
+	HTTPViolationScore   string      `json:"http_violation_score"`
+	XSSScore             string      `json:"xss_score"`
+	RespStatus           string      `json:"resp_status"`
+	RespBytes            string      `json:"resp_bytes"`
+	RespHeaderBytes      string      `json:"resp_header_bytes"`
+	RespBodyBytes        string      `json:"resp_body_bytes"`
+	WafEvents            []OutputWaf `json:"waf_events"`
 }
 
 type OutputWaf struct {
@@ -109,10 +109,10 @@ type OutputWaf struct {
 // ECE The Event Correlation Engine itself
 type ECE struct {
 	sync.RWMutex
-	Events 	map[string]*Event
-	logger	*log.Logger
-	Ttl    	time.Duration
-	Debug  	bool
+	Events map[string]*Event
+	logger *log.Logger
+	Ttl    time.Duration
+	Debug  bool
 }
 
 // NewECE  Creates a new ECE.
@@ -120,16 +120,16 @@ func NewECE(maxAge time.Duration, logFile string, maxLogSize int, maxLogBackups 
 	logObj := log.New(os.Stdout, "", 0)
 
 	logObj.SetOutput(&lumberjack.Logger{
-		Filename: logFile,
-		MaxSize: maxLogSize,
+		Filename:   logFile,
+		MaxSize:    maxLogSize,
 		MaxBackups: maxLogBackups,
-		MaxAge: maxLogAge,
-		Compress: logCompress,
+		MaxAge:     maxLogAge,
+		Compress:   logCompress,
 	})
 
 	a := &ECE{
 		Ttl:    maxAge,
-		logger:	logObj,
+		logger: logObj,
 		Events: make(map[string]*Event),
 	}
 
@@ -157,37 +157,37 @@ func (engine *ECE) WriteEvent(reqId string) (err error) {
 
 	if len(event.RequestEntries) > 0 {
 		outputEvent = OutputEvent{
-			ServiceId: event.RequestEntries[0].ServiceId,
-			RequestId: event.RequestEntries[0].RequestId,
-			StartTime: event.RequestEntries[0].StartTime,
-			FastlyInfo: event.RequestEntries[0].FastlyInfo,
-			Datacenter: event.RequestEntries[0].Datacenter,
-			ClientIp: event.RequestEntries[0].ClientIp,
-			ReqMethod: event.RequestEntries[0].ReqMethod,
-			ReqURI: event.RequestEntries[0].ReqURI,
-			ReqHHost: event.RequestEntries[0].ReqHHost,
-			ReqHUserAgent: event.RequestEntries[0].ReqHUserAgent,
-			ReqHAcceptEncoding: event.RequestEntries[0].ReqHAcceptEncoding,
-			ReqHeaderBytes: event.RequestEntries[0].ReqHeaderBytes,
-			ReqBodyBytes: event.RequestEntries[0].ReqBodyBytes,
-			WafLogged: event.RequestEntries[0].WafLogged,
-			WafBlocked: event.RequestEntries[0].WafBlocked,
-			WafFailures: event.RequestEntries[0].WafFailures,
-			WafExecuted: event.RequestEntries[0].WafExecuted,
-			AnomalyScore: event.RequestEntries[0].AnomalyScore,
-			SqlInjectionScore: event.RequestEntries[0].SqlInjectionScore,
-			RfiScore: event.RequestEntries[0].RfiScore,
-			LfiScore: event.RequestEntries[0].LfiScore,
-			RceScore: event.RequestEntries[0].RceScore,
-			PhpInjectionScore: event.RequestEntries[0].PhpInjectionScore,
+			ServiceId:            event.RequestEntries[0].ServiceId,
+			RequestId:            event.RequestEntries[0].RequestId,
+			StartTime:            event.RequestEntries[0].StartTime,
+			FastlyInfo:           event.RequestEntries[0].FastlyInfo,
+			Datacenter:           event.RequestEntries[0].Datacenter,
+			ClientIp:             event.RequestEntries[0].ClientIp,
+			ReqMethod:            event.RequestEntries[0].ReqMethod,
+			ReqURI:               event.RequestEntries[0].ReqURI,
+			ReqHHost:             event.RequestEntries[0].ReqHHost,
+			ReqHUserAgent:        event.RequestEntries[0].ReqHUserAgent,
+			ReqHAcceptEncoding:   event.RequestEntries[0].ReqHAcceptEncoding,
+			ReqHeaderBytes:       event.RequestEntries[0].ReqHeaderBytes,
+			ReqBodyBytes:         event.RequestEntries[0].ReqBodyBytes,
+			WafLogged:            event.RequestEntries[0].WafLogged,
+			WafBlocked:           event.RequestEntries[0].WafBlocked,
+			WafFailures:          event.RequestEntries[0].WafFailures,
+			WafExecuted:          event.RequestEntries[0].WafExecuted,
+			AnomalyScore:         event.RequestEntries[0].AnomalyScore,
+			SqlInjectionScore:    event.RequestEntries[0].SqlInjectionScore,
+			RfiScore:             event.RequestEntries[0].RfiScore,
+			LfiScore:             event.RequestEntries[0].LfiScore,
+			RceScore:             event.RequestEntries[0].RceScore,
+			PhpInjectionScore:    event.RequestEntries[0].PhpInjectionScore,
 			SessionFixationScore: event.RequestEntries[0].SessionFixationScore,
-			HTTPViolationScore: event.RequestEntries[0].HTTPViolationScore,
-			XSSScore: event.RequestEntries[0].XSSScore,
-			RespStatus: event.RequestEntries[0].RespStatus,
-			RespBytes: event.RequestEntries[0].RespBytes,
-			RespHeaderBytes: event.RequestEntries[0].RespHeaderBytes,
-			RespBodyBytes: event.RequestEntries[0].RespBodyBytes,
-			WafEvents: make([]OutputWaf, 0),
+			HTTPViolationScore:   event.RequestEntries[0].HTTPViolationScore,
+			XSSScore:             event.RequestEntries[0].XSSScore,
+			RespStatus:           event.RequestEntries[0].RespStatus,
+			RespBytes:            event.RequestEntries[0].RespBytes,
+			RespHeaderBytes:      event.RequestEntries[0].RespHeaderBytes,
+			RespBodyBytes:        event.RequestEntries[0].RespBodyBytes,
+			WafEvents:            make([]OutputWaf, 0),
 		}
 	} else {
 		outputEvent = OutputEvent{
@@ -197,11 +197,11 @@ func (engine *ECE) WriteEvent(reqId string) (err error) {
 
 	for _, wafEvent := range event.WafEntries {
 		wafOut := OutputWaf{
-			RuleId: wafEvent.RuleId,
-			Severity: wafEvent.Severity,
+			RuleId:       wafEvent.RuleId,
+			Severity:     wafEvent.Severity,
 			AnomalyScore: wafEvent.AnomalyScore,
-			LogData: wafEvent.LogData,
-			WafMessage:wafEvent.WafMessage,
+			LogData:      wafEvent.LogData,
+			WafMessage:   wafEvent.WafMessage,
 		}
 
 		outputEvent.WafEvents = append(outputEvent.WafEvents, wafOut)
@@ -319,7 +319,7 @@ func (engine *ECE) Run(address string) {
 	server.Boot()
 
 	fmt.Fprint(os.Stderr, "Fastly WAF Event Correlation Engine starting!\n")
-	fmt.Fprintf(os.Stderr,"Listening on %s\n", address)
+	fmt.Fprintf(os.Stderr, "Listening on %s\n", address)
 	fmt.Fprintf(os.Stderr, "TTL: %f seconds\n", engine.Ttl.Seconds())
 
 	go func(channel syslog.LogPartsChannel) {

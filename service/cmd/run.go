@@ -17,10 +17,10 @@ package cmd
 import (
 	"github.com/scribd/fastly-waf-ece/service"
 	"github.com/spf13/cobra"
-	"time"
+	"log"
 	"os"
 	"path"
-	"log"
+	"time"
 )
 
 // runCmd represents the run command
@@ -44,7 +44,7 @@ Runs the ECE on the configured port.
 			log.Fatalln("Cannot run without a listen address (-a).  Run fastly-waf-ece help for more info.")
 		}
 
-		engine := service.NewECE(time.Duration(ttl) * time.Second, logFile, maxLogSize, maxLogBackups, maxLogAge, logCompress)
+		engine := service.NewECE(time.Duration(ttl)*time.Second, logFile, maxLogSize, maxLogBackups, maxLogAge, logCompress)
 		engine.Debug = debug
 
 		engine.Run(address)
