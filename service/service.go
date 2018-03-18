@@ -64,6 +64,7 @@ type RequestEntry struct {
 	RespBodyBytes        string `json:"resp_body_bytes"`
 }
 
+// OutputEvent is simply the marshal format for the outputted merged event
 type OutputEvent struct {
 	ServiceId            string      `json:"service_id"`
 	RequestId            string      `json:"request_id"`
@@ -98,6 +99,7 @@ type OutputEvent struct {
 	WafEvents            []OutputWaf `json:"waf_events"`
 }
 
+// OutputWaf is the output format for the waf event
 type OutputWaf struct {
 	RuleId       string `json:"rule_id"`
 	Severity     string `json:"severity"`
