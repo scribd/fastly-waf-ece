@@ -13,7 +13,7 @@
     "targets": [
       {
         "src": "fastly-waf-ece_linux_amd64",
-        "dst": "{{.Repository}}/gomason/{{.Version}}/linux/amd64/gomason",
+        "dst": "{{.Repository}}/fastly-waf-ece/{{.Version}}/linux/amd64/fastly-waf-ece",
         "sig": true,
         "checksums": false
       }
