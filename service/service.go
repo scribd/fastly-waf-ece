@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/pkg/errors"
@@ -198,11 +199,17 @@ func (engine *ECE) WriteEvent(reqId string) (err error) {
 	}
 
 	for _, wafEvent := range event.WafEntries {
+		var decoded string
+		if wafEvent.LogData != "" {
+			decodedBytes, _ := base64.StdEncoding.DecodeString(wafEvent.LogData)
+			decoded = string(decodedBytes)
+		}
+
 		wafOut := OutputWaf{
 			RuleId:       wafEvent.RuleId,
 			Severity:     wafEvent.Severity,
 			AnomalyScore: wafEvent.AnomalyScore,
-			LogData:      wafEvent.LogData,
+			LogData:      decoded,
 			WafMessage:   wafEvent.WafMessage,
 		}
 

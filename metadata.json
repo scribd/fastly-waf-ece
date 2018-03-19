@@ -1,5 +1,5 @@
 {
-  "version": "0.1.0",
+  "version": "0.1.1",
   "package": "github.com/scribd/fastly-waf-ece",
   "description": "",
   "repository": "http://artifacts.lo/artifactory/generic-local",
@@ -14,7 +14,7 @@
       {
         "src": "fastly-waf-ece_linux_amd64",
         "dst": "{{.Repository}}/fastly-waf-ece/{{.Version}}/linux/amd64/fastly-waf-ece",
-        "sig": true,
+        "sig": false,
         "checksums": false
       }
     ]
