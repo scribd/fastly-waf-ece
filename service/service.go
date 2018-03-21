@@ -22,8 +22,8 @@ type Event struct {
 // WafEntry  a struct representing a Waf Log Entry
 type WafEntry struct {
 	EventType    string `json:"event_type"`
-	RequestId    string `json:"request_id"`
-	RuleId       string `json:"rule_id"`
+	RequestID    string `json:"request_id"`
+	RuleID       string `json:"rule_id"`
 	Severity     string `json:"severity"`
 	AnomalyScore string `json:"anomaly_score"`
 	LogData      string `json:"logdata"`
@@ -33,12 +33,12 @@ type WafEntry struct {
 // RequestEntry a struct representing a Web Event
 type RequestEntry struct {
 	EventType            string `json:"event_type"`
-	ServiceId            string `json:"service_id"`
-	RequestId            string `json:"request_id"`
+	ServiceID            string `json:"service_id"`
+	RequestID            string `json:"request_id"`
 	StartTime            string `json:"start_time"`
 	FastlyInfo           string `json:"fastly_info"`
 	Datacenter           string `json:"datacenter"`
-	ClientIp             string `json:"client_ip"`
+	ClientIP             string `json:"client_ip"`
 	ReqMethod            string `json:"req_method"`
 	ReqURI               string `json:"req_uri"`
 	ReqHHost             string `json:"req_h_host"`
@@ -51,7 +51,7 @@ type RequestEntry struct {
 	WafFailures          string `json:"waf_failures"`
 	WafExecuted          string `json:"waf_executed"`
 	AnomalyScore         string `json:"anomaly_score"`
-	SqlInjectionScore    string `json:"sql_injection_score"`
+	SQLInjectionScore    string `json:"sql_injection_score"`
 	RfiScore             string `json:"rfi_score"`
 	LfiScore             string `json:"lfi_score"`
 	RceScore             string `json:"rce_score"`
@@ -67,12 +67,12 @@ type RequestEntry struct {
 
 // OutputEvent is simply the marshal format for the outputted merged event
 type OutputEvent struct {
-	ServiceId            string      `json:"service_id"`
-	RequestId            string      `json:"request_id"`
+	ServiceID            string      `json:"service_id"`
+	RequestID            string      `json:"request_id"`
 	StartTime            string      `json:"start_time"`
 	FastlyInfo           string      `json:"fastly_info"`
 	Datacenter           string      `json:"datacenter"`
-	ClientIp             string      `json:"client_ip"`
+	ClientIP             string      `json:"client_ip"`
 	ReqMethod            string      `json:"req_method"`
 	ReqURI               string      `json:"req_uri"`
 	ReqHHost             string      `json:"req_h_host"`
@@ -85,7 +85,7 @@ type OutputEvent struct {
 	WafFailures          string      `json:"waf_failures"`
 	WafExecuted          string      `json:"waf_executed"`
 	AnomalyScore         string      `json:"anomaly_score"`
-	SqlInjectionScore    string      `json:"sql_injection_score"`
+	SQLInjectionScore    string      `json:"sql_injection_score"`
 	RfiScore             string      `json:"rfi_score"`
 	LfiScore             string      `json:"lfi_score"`
 	RceScore             string      `json:"rce_score"`
@@ -102,7 +102,7 @@ type OutputEvent struct {
 
 // OutputWaf is the output format for the waf event
 type OutputWaf struct {
-	RuleId       string `json:"rule_id"`
+	RuleID       string `json:"rule_id"`
 	Severity     string `json:"severity"`
 	AnomalyScore string `json:"anomaly_score"`
 	LogData      string `json:"logdata"`
@@ -114,7 +114,7 @@ type ECE struct {
 	sync.RWMutex
 	Events map[string]*Event
 	logger *log.Logger
-	Ttl    time.Duration
+	TTL    time.Duration
 	Debug  bool
 }
 
@@ -131,7 +131,7 @@ func NewECE(maxAge time.Duration, logFile string, maxLogSize int, maxLogBackups 
 	})
 
 	a := &ECE{
-		Ttl:    maxAge,
+		TTL:    maxAge,
 		logger: logObj,
 		Events: make(map[string]*Event),
 	}
@@ -140,9 +140,9 @@ func NewECE(maxAge time.Duration, logFile string, maxLogSize int, maxLogBackups 
 }
 
 // RetrieveEvent returns the event for the request id, or nil if it doesn't exist
-func (engine *ECE) RetrieveEvent(reqId string) *Event {
+func (engine *ECE) RetrieveEvent(reqID string) *Event {
 	engine.RLock()
-	e, exists := engine.Events[reqId]
+	e, exists := engine.Events[reqID]
 	engine.RUnlock()
 
 	if exists {
@@ -153,19 +153,19 @@ func (engine *ECE) RetrieveEvent(reqId string) *Event {
 }
 
 // WriteEvent writes the event to Elasticsearch
-func (engine *ECE) WriteEvent(reqId string) (err error) {
-	event := engine.RetrieveEvent(reqId)
+func (engine *ECE) WriteEvent(reqID string) (err error) {
+	event := engine.RetrieveEvent(reqID)
 
 	var outputEvent OutputEvent
 
 	if len(event.RequestEntries) > 0 {
 		outputEvent = OutputEvent{
-			ServiceId:            event.RequestEntries[0].ServiceId,
-			RequestId:            event.RequestEntries[0].RequestId,
+			ServiceID:            event.RequestEntries[0].ServiceID,
+			RequestID:            event.RequestEntries[0].RequestID,
 			StartTime:            event.RequestEntries[0].StartTime,
 			FastlyInfo:           event.RequestEntries[0].FastlyInfo,
 			Datacenter:           event.RequestEntries[0].Datacenter,
-			ClientIp:             event.RequestEntries[0].ClientIp,
+			ClientIP:             event.RequestEntries[0].ClientIP,
 			ReqMethod:            event.RequestEntries[0].ReqMethod,
 			ReqURI:               event.RequestEntries[0].ReqURI,
 			ReqHHost:             event.RequestEntries[0].ReqHHost,
@@ -178,7 +178,7 @@ func (engine *ECE) WriteEvent(reqId string) (err error) {
 			WafFailures:          event.RequestEntries[0].WafFailures,
 			WafExecuted:          event.RequestEntries[0].WafExecuted,
 			AnomalyScore:         event.RequestEntries[0].AnomalyScore,
-			SqlInjectionScore:    event.RequestEntries[0].SqlInjectionScore,
+			SQLInjectionScore:    event.RequestEntries[0].SQLInjectionScore,
 			RfiScore:             event.RequestEntries[0].RfiScore,
 			LfiScore:             event.RequestEntries[0].LfiScore,
 			RceScore:             event.RequestEntries[0].RceScore,
@@ -206,7 +206,7 @@ func (engine *ECE) WriteEvent(reqId string) (err error) {
 		}
 
 		wafOut := OutputWaf{
-			RuleId:       wafEvent.RuleId,
+			RuleID:       wafEvent.RuleID,
 			Severity:     wafEvent.Severity,
 			AnomalyScore: wafEvent.AnomalyScore,
 			LogData:      decoded,
@@ -219,13 +219,13 @@ func (engine *ECE) WriteEvent(reqId string) (err error) {
 	outputBytes, err := json.Marshal(outputEvent)
 
 	if err != nil {
-		err = errors.Wrapf(err, "failed to marshall output for req id %q", reqId)
+		err = errors.Wrapf(err, "failed to marshall output for req id %q", reqID)
 		return err
 	}
 
 	engine.logger.Println(string(outputBytes))
 
-	err = engine.RemoveEvent(reqId)
+	err = engine.RemoveEvent(reqID)
 	if err != nil {
 		log.Printf("Error removing: %s", err)
 	}
@@ -234,9 +234,9 @@ func (engine *ECE) WriteEvent(reqId string) (err error) {
 }
 
 // RemoveEvent removes the event from the internal cache
-func (engine *ECE) RemoveEvent(reqId string) (err error) {
+func (engine *ECE) RemoveEvent(reqID string) (err error) {
 	engine.Lock()
-	delete(engine.Events, reqId)
+	delete(engine.Events, reqID)
 	engine.Unlock()
 
 	return err
@@ -253,9 +253,9 @@ func (engine *ECE) AddEvent(message string) (err error) {
 			return err
 		}
 
-		//log.Printf("WEb Event ID: %q", waf.RequestId)
+		//log.Printf("WEb Event ID: %q", waf.RequestID)
 
-		event := engine.RetrieveEvent(req.RequestId)
+		event := engine.RetrieveEvent(req.RequestID)
 
 		if event == nil { // It doesn't exist, create it and set it's lifetime
 			event := Event{
@@ -265,20 +265,20 @@ func (engine *ECE) AddEvent(message string) (err error) {
 
 			event.RequestEntries = append(event.RequestEntries, req)
 
-			//fmt.Printf("New Web %q\n", req.RequestId)
+			//fmt.Printf("New Web %q\n", req.RequestID)
 			engine.Lock()
-			engine.Events[req.RequestId] = &event
+			engine.Events[req.RequestID] = &event
 			engine.Unlock()
 
 			// then set it to notify after ttl expires
-			go DelayNotify(engine, req.RequestId)
+			go DelayNotify(engine, req.RequestID)
 
 			return err
 		}
 
 		// it does exist, add to it's req list
 		engine.Lock()
-		//fmt.Printf("\tAdding Web to %q\n", req.RequestId)
+		//fmt.Printf("\tAdding Web to %q\n", req.RequestID)
 		event.RequestEntries = append(event.RequestEntries, req)
 		engine.Unlock()
 
@@ -286,7 +286,7 @@ func (engine *ECE) AddEvent(message string) (err error) {
 	}
 
 	// Ok, it's a Waf event.  Process it as such.
-	event := engine.RetrieveEvent(waf.RequestId)
+	event := engine.RetrieveEvent(waf.RequestID)
 
 	if event == nil { // It doesn't exist, create it and set it's lifetime
 		event := Event{
@@ -296,19 +296,19 @@ func (engine *ECE) AddEvent(message string) (err error) {
 
 		event.WafEntries = append(event.WafEntries, waf)
 
-		//fmt.Printf("New Waf %q\n", waf.RequestId)
+		//fmt.Printf("New Waf %q\n", waf.RequestID)
 		engine.Lock()
-		engine.Events[waf.RequestId] = &event
+		engine.Events[waf.RequestID] = &event
 		engine.Unlock()
 
 		// then set it to notify after ttl expires
-		go DelayNotify(engine, waf.RequestId)
+		go DelayNotify(engine, waf.RequestID)
 
 		return err
 	}
 
 	// it does exist, add to it's waf list
-	//fmt.Printf("\tAdding Waf to %q\n", waf.RequestId)
+	//fmt.Printf("\tAdding Waf to %q\n", waf.RequestID)
 	engine.Lock()
 	event.WafEntries = append(event.WafEntries, waf)
 	engine.Unlock()
@@ -329,7 +329,7 @@ func (engine *ECE) Run(address string) {
 
 	fmt.Fprint(os.Stderr, "Fastly WAF Event Correlation Engine starting!\n")
 	fmt.Fprintf(os.Stderr, "Listening on %s\n", address)
-	fmt.Fprintf(os.Stderr, "TTL: %f seconds\n", engine.Ttl.Seconds())
+	fmt.Fprintf(os.Stderr, "TTL: %f seconds\n", engine.TTL.Seconds())
 
 	go func(channel syslog.LogPartsChannel) {
 		for logParts := range channel {
@@ -368,12 +368,12 @@ func UnmarshalWeb(message string) (web RequestEntry, err error) {
 }
 
 //DelayNotify is intended to run from a goroutine.  It sets a timer equal to the ttl, and then writes the event after the timer expires.
-func DelayNotify(ece *ECE, reqId string) {
-	timer := time.NewTimer(ece.Ttl)
+func DelayNotify(ece *ECE, reqID string) {
+	timer := time.NewTimer(ece.TTL)
 	defer timer.Stop()
 
 	<-timer.C
-	err := ece.WriteEvent(reqId)
+	err := ece.WriteEvent(reqID)
 	if err != nil {
 		log.Printf("Error writing: %s", err)
 	}
