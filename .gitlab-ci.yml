@@ -1,0 +1,36 @@
+stages:
+  - unit_tests
+#  - notifications
+  - build
+
+unit_tests:
+  stage: unit_tests
+  retry: 1
+  script:
+    - docker build -t fastly-waf-ece:${CI_BUILD_REF:0:7} -f Dockerfile.testing .
+    - >
+      docker run --rm
+      fastly-waf-ece:${CI_BUILD_REF:0:7}
+      bash -c
+      'go test -v ./...'
+
+  after_script:
+    - docker rmi :${CI_BUILD_REF:0:7}
+
+build:
+  stage: build
+  only:
+    - master
+
+  script:
+    - docker build -t fastly-waf-ece:${CI_BUILD_REF:0:7} -f Dockerfile.testing .
+    - >
+      docker run --rm
+      -e DEPLOY_USERNAME="$DEPLOY_USERNAME"
+      -e DEPLOY_PASSWORD="$DEPLOY_PASSWORD"
+      fastly-waf-ece:${CI_BUILD_REF:0:7}
+      bash -c
+      'gomason publish -v'
+
+  after_script:
+    - docker rmi pipeline-deployer:${CI_BUILD_REF:0:7}

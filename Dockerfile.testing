@@ -1,0 +1,13 @@
+FROM golang
+
+ADD . /go/src/github.com/scribd/fastly-waf-ece
+
+WORKDIR /go/src/github.com/scribd/fastly-waf-ece
+
+RUN echo | openssl s_client -showcerts -servername git.lo -connect git.lo:443 2>&1 | sed -ne '/BEGIN\ CERTIFICATE/,/END\ CERTIFICATE/ p' > /etc/ssl/certs/git.lo.pem && cd /etc/ssl/certs && c_rehash
+
+RUN go get github.com/kardianos/govendor
+
+RUN go get github.com/nikogura/gomason
+
+RUN govendor sync

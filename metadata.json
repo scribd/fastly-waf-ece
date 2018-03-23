@@ -17,6 +17,8 @@
         "sig": false,
         "checksums": false
       }
-    ]
+    ],
+    "usernamefunc": "echo -n $DEPLOY_USERNAME",
+    "passwordfunc": "echo -n $DEPLOY_PASSWORD"
   }
 }
