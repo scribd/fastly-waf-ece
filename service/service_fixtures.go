@@ -15,8 +15,8 @@ func TestWebEntryMessage() string {
 func TestWafEntry() WafEntry {
 	return WafEntry{
 		EventType:    "waf",
-		RequestId:    "65df6a015f5a85fdf3559acad090ce1c567cbceacefea4baa476406b1d876392",
-		RuleId:       "0",
+		RequestID:    "65df6a015f5a85fdf3559acad090ce1c567cbceacefea4baa476406b1d876392",
+		RuleID:       "0",
 		Severity:     "99",
 		AnomalyScore: "0",
 		LogData:      "",
@@ -28,12 +28,12 @@ func TestWafEntry() WafEntry {
 func TestWebEntry() RequestEntry {
 	return RequestEntry{
 		EventType:            "req",
-		ServiceId:            "AAABBBB",
-		RequestId:            "65df6a015f5a85fdf3559acad090ce1c567cbceacefea4baa476406b1d876392",
+		ServiceID:            "AAABBBB",
+		RequestID:            "65df6a015f5a85fdf3559acad090ce1c567cbceacefea4baa476406b1d876392",
 		StartTime:            "1521150005",
 		FastlyInfo:           "PASS",
 		Datacenter:           "SFO",
-		ClientIp:             "8.8.8.8",
+		ClientIP:             "8.8.8.8",
 		ReqMethod:            "POST",
 		ReqURI:               "L2luZGV4Lmh0bWwK",
 		ReqHHost:             "api.scribd.com",
@@ -46,7 +46,7 @@ func TestWebEntry() RequestEntry {
 		WafFailures:          "0",
 		WafExecuted:          "1",
 		AnomalyScore:         "0",
-		SqlInjectionScore:    "0",
+		SQLInjectionScore:    "0",
 		RfiScore:             "0",
 		LfiScore:             "0",
 		RceScore:             "0",
