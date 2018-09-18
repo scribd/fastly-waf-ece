@@ -217,7 +217,7 @@ func (engine *ECE) WriteEvent(reqId string) (err error) {
 		outputEvent.WafEvents = append(outputEvent.WafEvents, wafOut)
 
 		if outputEvent.RuleIds != "" {
-			outputEvent.RuleIds = fmt.Sprintf("%s, %s", outputEvent, wafEvent.RuleId)
+			outputEvent.RuleIds = fmt.Sprintf("%s, %s", outputEvent.RuleIds, wafEvent.RuleId)
 		} else {
 			outputEvent.RuleIds = wafEvent.RuleId
 		}
