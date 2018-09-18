@@ -13,7 +13,7 @@ jobs:
 
       # specify any bash command here prefixed with `run: `
       - run: go get github.com/kardianos/govendor
-      - run: go get github.com/nikogura/gomason
+      - run: go get github.com/nikogura/gomason/...
       - run: gomason test -vb ${CIRCLE_BRANCH}
 #      - run: go get github.com/mattn/goveralls
 #      - run: go test -v -cover -race -coverprofile=/tmp/coverage.out ./fastly-waf-ece
