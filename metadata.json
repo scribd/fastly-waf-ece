@@ -5,7 +5,9 @@
   "repository": "http://artifacts.lo/artifactory/generic-local",
   "building": {
     "targets": [
-      "linux/amd64"
+      {
+        "name": "linux/amd64"
+      }
     ]
   },
   "publishing": {
