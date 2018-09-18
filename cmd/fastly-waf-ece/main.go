@@ -14,7 +14,7 @@
 package main
 
 import (
-	"github.com/scribd/fastly-waf-ece/service/cmd"
+	"github.com/scribd/fastly-waf-ece/cmd"
 )
 
 func main() {

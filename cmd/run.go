@@ -15,7 +15,7 @@
 package cmd
 
 import (
-	"github.com/scribd/fastly-waf-ece/service"
+	"github.com/scribd/fastly-waf-ece/pkg/service"
 	"github.com/spf13/cobra"
 	"log"
 	"os"
