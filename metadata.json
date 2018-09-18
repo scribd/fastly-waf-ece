@@ -1,6 +1,6 @@
 {
   "version": "0.2.0",
-  "package": "github.com/scribd/fastly-waf-ece/pkg/service",
+  "package": "github.com/scribd/fastly-waf-ece",
   "description": "",
   "repository": "http://artifacts.lo/artifactory/generic-local",
   "building": {
