@@ -80,6 +80,7 @@ type OutputEvent struct {
 	ReqHAcceptEncoding   string      `json:"req_h_accept_encoding"`
 	ReqHeaderBytes       string      `json:"req_header_bytes"`
 	ReqBodyBytes         string      `json:"req_body_bytes"`
+	RuleIds              string      `json:"rule_ids"`
 	WafLogged            string      `json:"waf_logged"`
 	WafBlocked           string      `json:"waf_blocked"`
 	WafFailures          string      `json:"waf_failures"`
@@ -152,7 +153,7 @@ func (engine *ECE) RetrieveEvent(reqId string) *Event {
 	return nil
 }
 
-// WriteEvent writes the event to Elasticsearch
+// WriteEvent writes the event to the log
 func (engine *ECE) WriteEvent(reqId string) (err error) {
 	event := engine.RetrieveEvent(reqId)
 
@@ -214,6 +215,12 @@ func (engine *ECE) WriteEvent(reqId string) (err error) {
 		}
 
 		outputEvent.WafEvents = append(outputEvent.WafEvents, wafOut)
+
+		if outputEvent.RuleIds != "" {
+			outputEvent.RuleIds = fmt.Sprintf("%s, %s", outputEvent, wafEvent.RuleId)
+		} else {
+			outputEvent.RuleIds = wafEvent.RuleId
+		}
 	}
 
 	outputBytes, err := json.Marshal(outputEvent)

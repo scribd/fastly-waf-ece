@@ -1,5 +1,5 @@
 {
-  "version": "0.1.1",
+  "version": "0.2.0",
   "package": "github.com/scribd/fastly-waf-ece",
   "description": "",
   "repository": "http://artifacts.lo/artifactory/generic-local",
@@ -18,7 +18,7 @@
         "checksums": false
       }
     ],
-    "usernamefunc": "echo -n $DEPLOY_USERNAME",
-    "passwordfunc": "echo -n $DEPLOY_PASSWORD"
+    "usernamefunc": "echo -n $username",
+    "passwordfunc": "echo -n $password"
   }
 }
