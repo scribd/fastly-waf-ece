@@ -9,6 +9,7 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 	"log"
 	"os"
+	"strings"
 	"sync"
 	"time"
 )
@@ -199,6 +200,9 @@ func (engine *ECE) WriteEvent(reqId string) (err error) {
 		}
 	}
 
+	// map to hold unique violated rule ids
+	ruleIds := make(map[string]int)
+
 	for _, wafEvent := range event.WafEntries {
 		var decoded string
 		if wafEvent.LogData != "" {
@@ -216,12 +220,19 @@ func (engine *ECE) WriteEvent(reqId string) (err error) {
 
 		outputEvent.WafEvents = append(outputEvent.WafEvents, wafOut)
 
-		if outputEvent.RuleIds != "" {
-			outputEvent.RuleIds = fmt.Sprintf("%s, %s", outputEvent.RuleIds, wafEvent.RuleId)
-		} else {
-			outputEvent.RuleIds = wafEvent.RuleId
-		}
+		ruleIds[wafEvent.RuleId] = 1
 	}
+
+	// make a list from the keys
+	ids := make([]string, len(ruleIds))
+
+	i := 0
+	for id := range ruleIds {
+		ids[i] = id
+		i++
+	}
+
+	outputEvent.RuleIds = strings.Join(ids, ",")
 
 	outputBytes, err := json.Marshal(outputEvent)
 
