@@ -232,7 +232,7 @@ func (engine *ECE) WriteEvent(reqId string) (err error) {
 		i++
 	}
 
-	outputEvent.RuleIds = strings.Join(ids, ",")
+	outputEvent.RuleIds = strings.Join(ids, ", ")
 
 	outputBytes, err := json.Marshal(outputEvent)
 
