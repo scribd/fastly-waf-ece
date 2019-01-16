@@ -10,7 +10,6 @@ import (
 	"log"
 	"os"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 )
@@ -83,7 +82,6 @@ type OutputEvent struct {
 	ReqHeaderBytes       string      `json:"req_header_bytes"`
 	ReqBodyBytes         string      `json:"req_body_bytes"`
 	RuleIds              []int       `json:"rule_ids"`
-	RuleIdsString        string      `json:"rule_ids_string"`
 	WafLogged            string      `json:"waf_logged"`
 	WafBlocked           string      `json:"waf_blocked"`
 	WafFailures          string      `json:"waf_failures"`
@@ -227,7 +225,6 @@ func (engine *ECE) WriteEvent(reqId string) (err error) {
 
 	// make a list from the keys
 	ids := make([]int, len(ruleIds))
-	idstrings := make([]string, len(ruleIds))
 
 	i := 0
 	for id := range ruleIds {
@@ -238,11 +235,9 @@ func (engine *ECE) WriteEvent(reqId string) (err error) {
 		}
 
 		ids[i] = number
-		idstrings[i] = id
 		i++
 	}
 
-	outputEvent.RuleIdsString = strings.Join(idstrings, ", ")
 	outputEvent.RuleIds = ids
 
 	outputBytes, err := json.Marshal(outputEvent)
