@@ -83,7 +83,7 @@ type OutputEvent struct {
 	ReqHeaderBytes       string      `json:"req_header_bytes"`
 	ReqBodyBytes         string      `json:"req_body_bytes"`
 	RuleIds              []int       `json:"rule_ids"`
-	RuleIdsString        string      `json:"rule_ids"`
+	RuleIdsString        string      `json:"rule_ids_string"`
 	WafLogged            string      `json:"waf_logged"`
 	WafBlocked           string      `json:"waf_blocked"`
 	WafFailures          string      `json:"waf_failures"`
