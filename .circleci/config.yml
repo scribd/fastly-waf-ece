@@ -5,7 +5,9 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/golang:1.9.7
+      - image: circleci/golang:1.11.2
+
+    environment: GO111MODULE=on
 
     working_directory: /go/src/scribd/fastly-waf-ece
     steps:
