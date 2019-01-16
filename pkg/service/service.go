@@ -9,6 +9,7 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -81,7 +82,8 @@ type OutputEvent struct {
 	ReqHAcceptEncoding   string      `json:"req_h_accept_encoding"`
 	ReqHeaderBytes       string      `json:"req_header_bytes"`
 	ReqBodyBytes         string      `json:"req_body_bytes"`
-	RuleIds              string      `json:"rule_ids"`
+	RuleIds              []int       `json:"rule_ids"`
+	RuleIdsString        string      `json:"rule_ids"`
 	WafLogged            string      `json:"waf_logged"`
 	WafBlocked           string      `json:"waf_blocked"`
 	WafFailures          string      `json:"waf_failures"`
@@ -224,15 +226,24 @@ func (engine *ECE) WriteEvent(reqId string) (err error) {
 	}
 
 	// make a list from the keys
-	ids := make([]string, len(ruleIds))
+	ids := make([]int, len(ruleIds))
+	idstrings := make([]string, len(ruleIds))
 
 	i := 0
 	for id := range ruleIds {
-		ids[i] = id
+		number, err := strconv.Atoi(id)
+		if err != nil {
+			err = errors.Wrapf(err, "error converting %s to integer", id)
+			return err
+		}
+
+		ids[i] = number
+		idstrings[i] = id
 		i++
 	}
 
-	outputEvent.RuleIds = strings.Join(ids, ", ")
+	outputEvent.RuleIdsString = strings.Join(idstrings, ", ")
+	outputEvent.RuleIds = ids
 
 	outputBytes, err := json.Marshal(outputEvent)
 

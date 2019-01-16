@@ -5,15 +5,16 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/golang:1.9.7
+      - image: circleci/golang:1.11.2
+
+    environment: GO111MODULE=on
 
     working_directory: /go/src/scribd/fastly-waf-ece
     steps:
       - checkout
 
       # specify any bash command here prefixed with `run: `
-      - run: go get github.com/kardianos/govendor
-      - run: go get github.com/nikogura/gomason/...
+      - run: GO111MODULE=off go get github.com/nikogura/gomason/...
       - run: gomason test -vb ${CIRCLE_BRANCH}
 #      - run: go get github.com/mattn/goveralls
 #      - run: go test -v -cover -race -coverprofile=/tmp/coverage.out ./fastly-waf-ece
