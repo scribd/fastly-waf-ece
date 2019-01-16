@@ -1,36 +1,49 @@
 stages:
-  - unit_tests
-#  - notifications
-  - build
+  - test
+  - publish
+  - notifications
 
-unit_tests:
-  stage: unit_tests
+before_script:
+  # interferes with git repository handling in test
+  - unset CI_REPOSITORY_URL
+  - unset CI_BUILD_REF
+
+tests:
+  stage: test
   retry: 1
-  script:
-    - docker build -t fastly-waf-ece:${CI_BUILD_REF:0:7} -f Dockerfile.testing .
-    - >
-      docker run --rm
-      fastly-waf-ece:${CI_BUILD_REF:0:7}
-      bash -c
-      'go test -v ./...'
+  tags:
+    - gomason
 
-  after_script:
-    - docker rmi :${CI_BUILD_REF:0:7}
-
-build:
-  stage: build
-  only:
+  except:
     - master
 
   script:
-    - docker build -t fastly-waf-ece:${CI_BUILD_REF:0:7} -f Dockerfile.testing .
-    - >
-      docker run --rm
-      -e DEPLOY_USERNAME="$DEPLOY_USERNAME"
-      -e DEPLOY_PASSWORD="$DEPLOY_PASSWORD"
-      fastly-waf-ece:${CI_BUILD_REF:0:7}
-      bash -c
-      'gomason publish -v'
+    - gomason test -v -b ${CI_COMMIT_REF_NAME}
 
-  after_script:
-    - docker rmi pipeline-deployer:${CI_BUILD_REF:0:7}
+publish:
+  stage: publish
+  only:
+    - master
+
+  tags:
+    - gomason
+
+  script:
+    - dbt secrets exec -p infra/deploy "gomason publish -vb $CI_COMMIT_REF_NAME"
+
+# ----- Notifications
+notify_slack_failure:
+  stage: notifications
+  when: on_failure
+  dependencies: []
+  before_script: []
+  script:
+    - /opt/scribd/bin/build_notifier.rb failed
+
+notify_slack_success:
+  stage: notifications
+  when: on_success
+  dependencies: []
+  before_script: []
+  script:
+    - /opt/scribd/bin/build_notifier.rb success
