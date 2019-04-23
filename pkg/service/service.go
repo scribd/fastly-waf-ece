@@ -66,6 +66,7 @@ type RequestEntry struct {
 	RespBytes            string `json:"resp_bytes"`
 	RespHeaderBytes      string `json:"resp_header_bytes"`
 	RespBodyBytes        string `json:"resp_body_bytes"`
+	ThrottlingRule       string `json:"throttling_rule"`
 }
 
 // OutputEvent is simply the marshal format for the outputted merged event
@@ -102,6 +103,7 @@ type OutputEvent struct {
 	RespHeaderBytes      string      `json:"resp_header_bytes"`
 	RespBodyBytes        string      `json:"resp_body_bytes"`
 	WafEvents            []OutputWaf `json:"waf_events"`
+	ThrottlingRule       string      `json:"throttling_rule"`
 }
 
 // OutputWaf is the output format for the waf event
@@ -215,6 +217,7 @@ func (engine *ECE) WriteEvent(reqId string) (err error) {
 			RespBytes:            event.RequestEntries[0].RespBytes,
 			RespHeaderBytes:      event.RequestEntries[0].RespHeaderBytes,
 			RespBodyBytes:        event.RequestEntries[0].RespBodyBytes,
+			ThrottlingRule:       event.RequestEntries[0].ThrottlingRule,
 		}
 	} else {
 		outputEvent = OutputEvent{
