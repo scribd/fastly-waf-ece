@@ -16,6 +16,8 @@ import (
 
 // Event Struct representing an entire firewall event, containing generally 1 web event and 0 or more waf events
 type Event struct {
+	mutex sync.Mutex
+
 	WafEntries     []WafEntry
 	RequestEntries []RequestEntry
 }
@@ -174,6 +176,9 @@ func (engine *ECE) RetrieveEvent(reqId string) *Event {
 func (engine *ECE) WriteEvent(reqId string) (err error) {
 	event := engine.RemoveEvent(reqId)
 
+	// Lock, to prevent any modification, but no real need to unlock
+	event.mutex.Lock()
+
 	var outputEvent OutputEvent
 
 	if len(event.RequestEntries) > 0 {
@@ -291,9 +296,9 @@ func (engine *ECE) AddEvent(message string) (err error) {
 
 	// it does exist, add to it's waf list
 	//fmt.Printf("\tAdding Waf to %q\n", waf.RequestId)
-	engine.Lock()
+	event.mutex.Lock()
 	event.WafEntries = append(event.WafEntries, waf)
-	engine.Unlock()
+	event.mutex.Unlock()
 
 	return err
 }
@@ -311,10 +316,10 @@ func (engine *ECE) addWebEvent(message string) (err error) {
 	event := engine.RetrieveEvent(req.RequestId)
 
 	// it does exist, add to it's req list
-	engine.Lock()
+	event.mutex.Lock()
 	//fmt.Printf("\tAdding Web to %q\n", req.RequestId)
 	event.RequestEntries = append(event.RequestEntries, req)
-	engine.Unlock()
+	event.mutex.Unlock()
 
 	return err
 }
