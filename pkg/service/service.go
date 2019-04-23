@@ -371,11 +371,9 @@ func UnmarshalWeb(message string) (web RequestEntry, err error) {
 }
 
 //DelayNotify is intended to run from a goroutine.  It sets a timer equal to the ttl, and then writes the event after the timer expires.
-func DelayNotify(ece *ECE, reqId string) {
-	timer := time.NewTimer(ece.Ttl)
-	defer timer.Stop()
+func (ece *ECE) DelayNotify(reqId string) {
+	time.Sleep(ece.Ttl)
 
-	<-timer.C
 	err := ece.WriteEvent(reqId)
 	if err != nil {
 		log.Printf("Error writing: %s", err)
