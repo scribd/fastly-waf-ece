@@ -212,6 +212,7 @@ func (engine *ECE) WriteEvent(reqId string) (err error) {
 		}
 	} else {
 		outputEvent = OutputEvent{
+			RequestId: reqId,
 			WafEvents: make([]OutputWaf, 0),
 		}
 	}
