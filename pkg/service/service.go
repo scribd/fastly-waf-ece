@@ -147,16 +147,32 @@ func (engine *ECE) RetrieveEvent(reqId string) *Event {
 	e, exists := engine.Events[reqId]
 	engine.RUnlock()
 
-	if exists {
-		return e
+	if !exists {
+		// New event, insert an empty record and schedule a write
+		e = &Event{}
+
+		engine.Lock()
+		// Double check that someone hasn't inserted the event,
+		// while we didn't hold a lock
+		e, exists = engine.Events[reqId]
+		if exists {
+			engine.Unlock()
+			// Other thread beat us to it, bail out
+			return e
+		}
+
+		engine.Events[reqId] = e
+		engine.Unlock()
+
+		go engine.DelayNotify(reqId)
 	}
 
-	return nil
+	return e
 }
 
 // WriteEvent writes the event to the log
 func (engine *ECE) WriteEvent(reqId string) (err error) {
-	event := engine.RetrieveEvent(reqId)
+	event := engine.RemoveEvent(reqId)
 
 	var outputEvent OutputEvent
 
@@ -249,92 +265,54 @@ func (engine *ECE) WriteEvent(reqId string) (err error) {
 
 	engine.logger.Println(string(outputBytes))
 
-	err = engine.RemoveEvent(reqId)
-	if err != nil {
-		log.Printf("Error removing: %s", err)
-	}
-
 	return err
 }
 
 // RemoveEvent removes the event from the internal cache
-func (engine *ECE) RemoveEvent(reqId string) (err error) {
+func (engine *ECE) RemoveEvent(reqId string) *Event {
 	engine.Lock()
+	e := engine.Events[reqId]
 	delete(engine.Events, reqId)
 	engine.Unlock()
 
-	return err
+	return e
 }
 
 // AddEvent parses the event text, then looks it up in the internal cache.  If it's there, it adds the appropriate record to the existing event.  If not, it creates one and sets it's timeout.
 func (engine *ECE) AddEvent(message string) (err error) {
 	waf, err := UnmarshalWaf(message) // Try to unmarshal the message into a WAF event
 	if err != nil {                   // It didn't unmarshal.  It's either a req event, or garbage
-		req, err := UnmarshalWeb(message)
-
-		if err != nil { // It didn't unmarshal as a req event either.
-			err = fmt.Errorf("unparsable data: %s", message)
-			return err
-		}
-
-		//log.Printf("WEb Event ID: %q", waf.RequestId)
-
-		event := engine.RetrieveEvent(req.RequestId)
-
-		if event == nil { // It doesn't exist, create it and set it's lifetime
-			event := Event{
-				WafEntries:     make([]WafEntry, 0),
-				RequestEntries: make([]RequestEntry, 0),
-			}
-
-			event.RequestEntries = append(event.RequestEntries, req)
-
-			//fmt.Printf("New Web %q\n", req.RequestId)
-			engine.Lock()
-			engine.Events[req.RequestId] = &event
-			engine.Unlock()
-
-			// then set it to notify after ttl expires
-			go DelayNotify(engine, req.RequestId)
-
-			return err
-		}
-
-		// it does exist, add to it's req list
-		engine.Lock()
-		//fmt.Printf("\tAdding Web to %q\n", req.RequestId)
-		event.RequestEntries = append(event.RequestEntries, req)
-		engine.Unlock()
-
-		return err
+		return engine.addWebEvent(message)
 	}
 
 	// Ok, it's a Waf event.  Process it as such.
 	event := engine.RetrieveEvent(waf.RequestId)
 
-	if event == nil { // It doesn't exist, create it and set it's lifetime
-		event := Event{
-			WafEntries:     make([]WafEntry, 0),
-			RequestEntries: make([]RequestEntry, 0),
-		}
-
-		event.WafEntries = append(event.WafEntries, waf)
-
-		//fmt.Printf("New Waf %q\n", waf.RequestId)
-		engine.Lock()
-		engine.Events[waf.RequestId] = &event
-		engine.Unlock()
-
-		// then set it to notify after ttl expires
-		go DelayNotify(engine, waf.RequestId)
-
-		return err
-	}
-
 	// it does exist, add to it's waf list
 	//fmt.Printf("\tAdding Waf to %q\n", waf.RequestId)
 	engine.Lock()
 	event.WafEntries = append(event.WafEntries, waf)
+	engine.Unlock()
+
+	return err
+}
+
+func (engine *ECE) addWebEvent(message string) (err error) {
+	req, err := UnmarshalWeb(message)
+
+	if err != nil { // It didn't unmarshal as a req event either.
+		err = fmt.Errorf("unparsable data: %s", message)
+		return err
+	}
+
+	//log.Printf("WEb Event ID: %q", waf.RequestId)
+
+	event := engine.RetrieveEvent(req.RequestId)
+
+	// it does exist, add to it's req list
+	engine.Lock()
+	//fmt.Printf("\tAdding Web to %q\n", req.RequestId)
+	event.RequestEntries = append(event.RequestEntries, req)
 	engine.Unlock()
 
 	return err
