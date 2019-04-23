@@ -11,3 +11,5 @@ require (
 	gopkg.in/mcuadros/go-syslog.v2 v2.2.1
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0-20170531160350-a96e63847dc3
 )
+
+replace gopkg.in/mcuadros/go-syslog.v2 => github.com/libc/go-syslog v0.0.0-20190315120441-9a827eb2069c
