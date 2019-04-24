@@ -16,6 +16,8 @@ import (
 
 // Event Struct representing an entire firewall event, containing generally 1 web event and 0 or more waf events
 type Event struct {
+	mutex sync.Mutex
+
 	WafEntries     []WafEntry
 	RequestEntries []RequestEntry
 }
@@ -118,6 +120,8 @@ type ECE struct {
 	logger *log.Logger
 	Ttl    time.Duration
 	Debug  bool
+
+	server *syslog.Server
 }
 
 // NewECE  Creates a new ECE.
@@ -147,16 +151,35 @@ func (engine *ECE) RetrieveEvent(reqId string) *Event {
 	e, exists := engine.Events[reqId]
 	engine.RUnlock()
 
-	if exists {
-		return e
+	if !exists {
+		engine.Lock()
+		// Double check that someone hasn't inserted the event,
+		// while we didn't hold a lock
+		e, exists = engine.Events[reqId]
+		if exists {
+			engine.Unlock()
+			// Other thread beat us to it, bail out
+			return e
+		}
+
+		// New event, insert an empty record and schedule a write
+		e = &Event{}
+
+		engine.Events[reqId] = e
+		engine.Unlock()
+
+		go engine.DelayNotify(reqId)
 	}
 
-	return nil
+	return e
 }
 
 // WriteEvent writes the event to the log
 func (engine *ECE) WriteEvent(reqId string) (err error) {
-	event := engine.RetrieveEvent(reqId)
+	event := engine.RemoveEvent(reqId)
+
+	// Lock, to prevent any modification, but no real need to unlock
+	event.mutex.Lock()
 
 	var outputEvent OutputEvent
 
@@ -192,11 +215,10 @@ func (engine *ECE) WriteEvent(reqId string) (err error) {
 			RespBytes:            event.RequestEntries[0].RespBytes,
 			RespHeaderBytes:      event.RequestEntries[0].RespHeaderBytes,
 			RespBodyBytes:        event.RequestEntries[0].RespBodyBytes,
-			WafEvents:            make([]OutputWaf, 0),
 		}
 	} else {
 		outputEvent = OutputEvent{
-			WafEvents: make([]OutputWaf, 0),
+			RequestId: reqId,
 		}
 	}
 
@@ -249,111 +271,62 @@ func (engine *ECE) WriteEvent(reqId string) (err error) {
 
 	engine.logger.Println(string(outputBytes))
 
-	err = engine.RemoveEvent(reqId)
-	if err != nil {
-		log.Printf("Error removing: %s", err)
-	}
-
 	return err
 }
 
 // RemoveEvent removes the event from the internal cache
-func (engine *ECE) RemoveEvent(reqId string) (err error) {
+func (engine *ECE) RemoveEvent(reqId string) *Event {
 	engine.Lock()
+	e := engine.Events[reqId]
 	delete(engine.Events, reqId)
 	engine.Unlock()
 
-	return err
+	return e
 }
 
 // AddEvent parses the event text, then looks it up in the internal cache.  If it's there, it adds the appropriate record to the existing event.  If not, it creates one and sets it's timeout.
 func (engine *ECE) AddEvent(message string) (err error) {
 	waf, err := UnmarshalWaf(message) // Try to unmarshal the message into a WAF event
 	if err != nil {                   // It didn't unmarshal.  It's either a req event, or garbage
-		req, err := UnmarshalWeb(message)
-
-		if err != nil { // It didn't unmarshal as a req event either.
-			err = fmt.Errorf("unparsable data: %s", message)
-			return err
-		}
-
-		//log.Printf("WEb Event ID: %q", waf.RequestId)
-
-		event := engine.RetrieveEvent(req.RequestId)
-
-		if event == nil { // It doesn't exist, create it and set it's lifetime
-			event := Event{
-				WafEntries:     make([]WafEntry, 0),
-				RequestEntries: make([]RequestEntry, 0),
-			}
-
-			event.RequestEntries = append(event.RequestEntries, req)
-
-			//fmt.Printf("New Web %q\n", req.RequestId)
-			engine.Lock()
-			engine.Events[req.RequestId] = &event
-			engine.Unlock()
-
-			// then set it to notify after ttl expires
-			go DelayNotify(engine, req.RequestId)
-
-			return err
-		}
-
-		// it does exist, add to it's req list
-		engine.Lock()
-		//fmt.Printf("\tAdding Web to %q\n", req.RequestId)
-		event.RequestEntries = append(event.RequestEntries, req)
-		engine.Unlock()
-
-		return err
+		return engine.addWebEvent(message)
 	}
 
 	// Ok, it's a Waf event.  Process it as such.
 	event := engine.RetrieveEvent(waf.RequestId)
 
-	if event == nil { // It doesn't exist, create it and set it's lifetime
-		event := Event{
-			WafEntries:     make([]WafEntry, 0),
-			RequestEntries: make([]RequestEntry, 0),
-		}
-
-		event.WafEntries = append(event.WafEntries, waf)
-
-		//fmt.Printf("New Waf %q\n", waf.RequestId)
-		engine.Lock()
-		engine.Events[waf.RequestId] = &event
-		engine.Unlock()
-
-		// then set it to notify after ttl expires
-		go DelayNotify(engine, waf.RequestId)
-
-		return err
-	}
-
 	// it does exist, add to it's waf list
 	//fmt.Printf("\tAdding Waf to %q\n", waf.RequestId)
-	engine.Lock()
+	event.mutex.Lock()
 	event.WafEntries = append(event.WafEntries, waf)
-	engine.Unlock()
+	event.mutex.Unlock()
 
 	return err
 }
 
-// Run runs the syslog server that waits for events
-func (engine *ECE) Run(address string) {
+func (engine *ECE) addWebEvent(message string) (err error) {
+	req, err := UnmarshalWeb(message)
+
+	if err != nil { // It didn't unmarshal as a req event either.
+		err = fmt.Errorf("unparsable data: %s", message)
+		return err
+	}
+
+	//log.Printf("WEb Event ID: %q", waf.RequestId)
+
+	event := engine.RetrieveEvent(req.RequestId)
+
+	// it does exist, add to it's req list
+	event.mutex.Lock()
+	//fmt.Printf("\tAdding Web to %q\n", req.RequestId)
+	event.RequestEntries = append(event.RequestEntries, req)
+	event.mutex.Unlock()
+
+	return err
+}
+
+func (engine *ECE) Start(address string) {
 	channel := make(syslog.LogPartsChannel)
 	handler := syslog.NewChannelHandler(channel)
-
-	server := syslog.NewServer()
-	server.SetFormat(syslog.RFC5424)
-	server.SetHandler(handler)
-	server.ListenTCP(address)
-	server.Boot()
-
-	fmt.Fprint(os.Stderr, "Fastly WAF Event Correlation Engine starting!\n")
-	fmt.Fprintf(os.Stderr, "Listening on %s\n", address)
-	fmt.Fprintf(os.Stderr, "TTL: %f seconds\n", engine.Ttl.Seconds())
 
 	go func(channel syslog.LogPartsChannel) {
 		for logParts := range channel {
@@ -368,8 +341,32 @@ func (engine *ECE) Run(address string) {
 		}
 	}(channel)
 
-	server.Wait()
+	server := syslog.NewServer()
+	server.SetFormat(syslog.RFC5424)
+	server.SetHandler(handler)
+	server.ListenTCP(address)
+	server.Boot()
 
+	engine.server = server
+}
+
+// Run runs the syslog server that waits for events
+func (engine *ECE) Run(address string) {
+	engine.Start(address)
+
+	fmt.Fprint(os.Stderr, "Fastly WAF Event Correlation Engine starting!\n")
+	fmt.Fprintf(os.Stderr, "Listening on %s\n", address)
+	fmt.Fprintf(os.Stderr, "TTL: %f seconds\n", engine.Ttl.Seconds())
+
+	engine.Wait()
+}
+
+func (engine *ECE) Shutdown() {
+	engine.server.Kill()
+}
+
+func (engine *ECE) Wait() {
+	engine.server.Wait()
 }
 
 // UnmarshalWaf unmarshals the log json into a WafEntry Object
@@ -392,13 +389,10 @@ func UnmarshalWeb(message string) (web RequestEntry, err error) {
 }
 
 //DelayNotify is intended to run from a goroutine.  It sets a timer equal to the ttl, and then writes the event after the timer expires.
-func DelayNotify(ece *ECE, reqId string) {
-	timer := time.NewTimer(ece.Ttl)
-	defer timer.Stop()
+func (ece *ECE) DelayNotify(reqId string) {
+	time.Sleep(ece.Ttl)
 
-	<-timer.C
 	err := ece.WriteEvent(reqId)
 	if err != nil {
-		log.Printf("Error writing: %s", err)
 	}
 }
