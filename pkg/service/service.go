@@ -120,6 +120,8 @@ type ECE struct {
 	logger *log.Logger
 	Ttl    time.Duration
 	Debug  bool
+
+	server *syslog.Server
 }
 
 // NewECE  Creates a new ECE.
@@ -150,9 +152,6 @@ func (engine *ECE) RetrieveEvent(reqId string) *Event {
 	engine.RUnlock()
 
 	if !exists {
-		// New event, insert an empty record and schedule a write
-		e = &Event{}
-
 		engine.Lock()
 		// Double check that someone hasn't inserted the event,
 		// while we didn't hold a lock
@@ -162,6 +161,9 @@ func (engine *ECE) RetrieveEvent(reqId string) *Event {
 			// Other thread beat us to it, bail out
 			return e
 		}
+
+		// New event, insert an empty record and schedule a write
+		e = &Event{}
 
 		engine.Events[reqId] = e
 		engine.Unlock()
@@ -213,12 +215,10 @@ func (engine *ECE) WriteEvent(reqId string) (err error) {
 			RespBytes:            event.RequestEntries[0].RespBytes,
 			RespHeaderBytes:      event.RequestEntries[0].RespHeaderBytes,
 			RespBodyBytes:        event.RequestEntries[0].RespBodyBytes,
-			WafEvents:            make([]OutputWaf, 0),
 		}
 	} else {
 		outputEvent = OutputEvent{
 			RequestId: reqId,
-			WafEvents: make([]OutputWaf, 0),
 		}
 	}
 
@@ -324,20 +324,9 @@ func (engine *ECE) addWebEvent(message string) (err error) {
 	return err
 }
 
-// Run runs the syslog server that waits for events
-func (engine *ECE) Run(address string) {
+func (engine *ECE) Start(address string) {
 	channel := make(syslog.LogPartsChannel)
 	handler := syslog.NewChannelHandler(channel)
-
-	server := syslog.NewServer()
-	server.SetFormat(syslog.RFC5424)
-	server.SetHandler(handler)
-	server.ListenTCP(address)
-	server.Boot()
-
-	fmt.Fprint(os.Stderr, "Fastly WAF Event Correlation Engine starting!\n")
-	fmt.Fprintf(os.Stderr, "Listening on %s\n", address)
-	fmt.Fprintf(os.Stderr, "TTL: %f seconds\n", engine.Ttl.Seconds())
 
 	go func(channel syslog.LogPartsChannel) {
 		for logParts := range channel {
@@ -352,8 +341,32 @@ func (engine *ECE) Run(address string) {
 		}
 	}(channel)
 
-	server.Wait()
+	server := syslog.NewServer()
+	server.SetFormat(syslog.RFC5424)
+	server.SetHandler(handler)
+	server.ListenTCP(address)
+	server.Boot()
 
+	engine.server = server
+}
+
+// Run runs the syslog server that waits for events
+func (engine *ECE) Run(address string) {
+	engine.Start(address)
+
+	fmt.Fprint(os.Stderr, "Fastly WAF Event Correlation Engine starting!\n")
+	fmt.Fprintf(os.Stderr, "Listening on %s\n", address)
+	fmt.Fprintf(os.Stderr, "TTL: %f seconds\n", engine.Ttl.Seconds())
+
+	engine.Wait()
+}
+
+func (engine *ECE) Shutdown() {
+	engine.server.Kill()
+}
+
+func (engine *ECE) Wait() {
+	engine.server.Wait()
 }
 
 // UnmarshalWaf unmarshals the log json into a WafEntry Object
@@ -381,6 +394,5 @@ func (ece *ECE) DelayNotify(reqId string) {
 
 	err := ece.WriteEvent(reqId)
 	if err != nil {
-		log.Printf("Error writing: %s", err)
 	}
 }
