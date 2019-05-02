@@ -104,6 +104,7 @@ type OutputEvent struct {
 	RespBodyBytes        string      `json:"resp_body_bytes"`
 	WafEvents            []OutputWaf `json:"waf_events"`
 	ThrottlingRule       string      `json:"throttling_rule"`
+	Throttled            int         `json:"throttled"`
 }
 
 // OutputWaf is the output format for the waf event
@@ -264,6 +265,10 @@ func (engine *ECE) WriteEvent(reqId string) (err error) {
 	}
 
 	outputEvent.RuleIds = ids
+
+	if outputEvent.ThrottlingRule != "" {
+		outputEvent.Throttled = 1
+	}
 
 	outputBytes, err := json.Marshal(outputEvent)
 

@@ -95,6 +95,7 @@ func TestOutputEvent() OutputEvent {
 		RespHeaderBytes:      "620",
 		RespBodyBytes:        "77",
 		ThrottlingRule:       "password_reset",
+		Throttled:            1,
 
 		RuleIds: []int{0},
 		WafEvents: []OutputWaf{
