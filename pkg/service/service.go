@@ -1,6 +1,7 @@
 package service
 
 import (
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -13,6 +14,9 @@ import (
 	"sync"
 	"time"
 )
+
+const ECE_TLS_CRT_PATH_ENV_VAR = "ECE_TLS_CRT_PATH"
+const ECE_TLS_KEY_PATH_ENV_VAR = "ECE_TLS_KEY_PATH"
 
 // Event Struct representing an entire firewall event, containing generally 1 web event and 0 or more waf events
 type Event struct {
@@ -347,7 +351,23 @@ func (engine *ECE) Start(address string) {
 	server := syslog.NewServer()
 	server.SetFormat(syslog.RFC5424)
 	server.SetHandler(handler)
-	server.ListenTCP(address)
+
+	if os.Getenv(ECE_TLS_CRT_PATH_ENV_VAR) != "" && os.Getenv(ECE_TLS_KEY_PATH_ENV_VAR) != "" {
+		keypair, err := tls.LoadX509KeyPair(os.Getenv(ECE_TLS_CRT_PATH_ENV_VAR), os.Getenv(ECE_TLS_KEY_PATH_ENV_VAR))
+		if err != nil {
+			log.Fatalf("failed to load TLS Cert and Key from %s and %s", ECE_TLS_KEY_PATH_ENV_VAR, ECE_TLS_KEY_PATH_ENV_VAR)
+		}
+
+		config := tls.Config{
+			Certificates: []tls.Certificate{keypair},
+		}
+
+		server.ListenTCPTLS(address, &config)
+
+	} else {
+		server.ListenTCP(address)
+	}
+
 	server.Boot()
 
 	engine.server = server
