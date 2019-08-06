@@ -381,7 +381,7 @@ func (engine *ECE) Run(address string) {
 	fmt.Fprintf(os.Stderr, "Listening on %s\n", address)
 	fmt.Fprintf(os.Stderr, "TTL: %f seconds\n", engine.Ttl.Seconds())
 	if os.Getenv(ECE_TLS_CRT_PATH_ENV_VAR) != "" && os.Getenv(ECE_TLS_KEY_PATH_ENV_VAR) != "" {
-		fmt.Fprintf(os.Stderr, "TLS Enabled.  Key: %s  Cert: %s\n", ECE_TLS_CRT_PATH_ENV_VAR, ECE_TLS_KEY_PATH_ENV_VAR)
+		fmt.Fprintf(os.Stderr, "TLS Enabled.  Key: %s  Cert: %s\n", os.Getenv(ECE_TLS_CRT_PATH_ENV_VAR), os.Getenv(ECE_TLS_KEY_PATH_ENV_VAR))
 	}
 
 	engine.Wait()
