@@ -344,7 +344,7 @@ func (engine *ECE) Start(address string) {
 		for logParts := range channel {
 			message := logParts["message"].(string)
 			if engine.Debug {
-				fmt.Fprintln(os.Stderr, message)
+				_, _ = fmt.Fprintln(os.Stderr, message)
 			}
 			err := engine.AddEvent(message)
 			if err != nil {
@@ -358,6 +358,8 @@ func (engine *ECE) Start(address string) {
 	server.SetHandler(handler)
 
 	if os.Getenv(ECE_TLS_CRT_PATH_ENV_VAR) != "" && os.Getenv(ECE_TLS_KEY_PATH_ENV_VAR) != "" {
+		_, _ = fmt.Fprintf(os.Stderr, "TLS Enabled.  Key: %s  Cert: %s\n", os.Getenv(ECE_TLS_CRT_PATH_ENV_VAR), os.Getenv(ECE_TLS_KEY_PATH_ENV_VAR))
+
 		keypair, err := tls.LoadX509KeyPair(os.Getenv(ECE_TLS_CRT_PATH_ENV_VAR), os.Getenv(ECE_TLS_KEY_PATH_ENV_VAR))
 		if err != nil {
 			log.Fatalf("failed to load TLS Cert and Key from %s and %s", ECE_TLS_KEY_PATH_ENV_VAR, ECE_TLS_KEY_PATH_ENV_VAR)
@@ -367,33 +369,42 @@ func (engine *ECE) Start(address string) {
 			Certificates: []tls.Certificate{keypair},
 		}
 
-		server.ListenTCPTLS(address, &config)
+		err = server.ListenTCPTLS(address, &config)
+		if err != nil {
+			log.Fatalf("Couldn't start TLS TCP listener: %s", err)
+		}
 
 	} else {
-		server.ListenTCP(address)
+		err := server.ListenTCP(address)
+		if err != nil {
+			log.Fatalf("Couldn't start TCP listener: %s", err)
+		}
 	}
 
-	server.Boot()
+	err := server.Boot()
+	if err != nil {
+		log.Fatalf("Server failed to boot: %s", err)
+	}
 
 	engine.server = server
 }
 
 // Run runs the syslog server that waits for events
 func (engine *ECE) Run(address string) {
-	engine.Start(address)
+	_, _ = fmt.Fprint(os.Stderr, "Fastly WAF Event Correlation Engine starting!\n")
+	_, _ = fmt.Fprintf(os.Stderr, "Listening on %s\n", address)
+	_, _ = fmt.Fprintf(os.Stderr, "TTL: %f seconds\n", engine.Ttl.Seconds())
 
-	fmt.Fprint(os.Stderr, "Fastly WAF Event Correlation Engine starting!\n")
-	fmt.Fprintf(os.Stderr, "Listening on %s\n", address)
-	fmt.Fprintf(os.Stderr, "TTL: %f seconds\n", engine.Ttl.Seconds())
-	if os.Getenv(ECE_TLS_CRT_PATH_ENV_VAR) != "" && os.Getenv(ECE_TLS_KEY_PATH_ENV_VAR) != "" {
-		fmt.Fprintf(os.Stderr, "TLS Enabled.  Key: %s  Cert: %s\n", os.Getenv(ECE_TLS_CRT_PATH_ENV_VAR), os.Getenv(ECE_TLS_KEY_PATH_ENV_VAR))
-	}
+	engine.Start(address)
 
 	engine.Wait()
 }
 
 func (engine *ECE) Shutdown() {
-	engine.server.Kill()
+	err := engine.server.Kill()
+	if err != nil {
+		log.Fatalf("Failed to kill server: %s", err)
+	}
 }
 
 func (engine *ECE) Wait() {
