@@ -1,4 +1,4 @@
-package service
+package ece
 
 import (
 	"crypto/tls"
@@ -123,16 +123,17 @@ type OutputWaf struct {
 // ECE The Event Correlation Engine itself
 type ECE struct {
 	sync.RWMutex
-	Events map[string]*Event
-	logger *log.Logger
-	Ttl    time.Duration
-	Debug  bool
+	Events  map[string]*Event
+	logger  *log.Logger
+	Ttl     time.Duration
+	Debug   bool
+	Address string
 
 	server *syslog.Server
 }
 
 // NewECE  Creates a new ECE.
-func NewECE(maxAge time.Duration, logFile string, maxLogSize int, maxLogBackups int, maxLogAge int, logCompress bool) *ECE {
+func NewECE(maxAge time.Duration, logFile string, maxLogSize int, maxLogBackups int, maxLogAge int, logCompress bool, address string) *ECE {
 	logObj := log.New(os.Stdout, "", 0)
 
 	logObj.SetOutput(&lumberjack.Logger{
@@ -143,47 +144,48 @@ func NewECE(maxAge time.Duration, logFile string, maxLogSize int, maxLogBackups 
 		Compress:   logCompress,
 	})
 
-	a := &ECE{
-		Ttl:    maxAge,
-		logger: logObj,
-		Events: make(map[string]*Event),
+	ece := &ECE{
+		Ttl:     maxAge,
+		logger:  logObj,
+		Events:  make(map[string]*Event),
+		Address: address,
 	}
 
-	return a
+	return ece
 }
 
 // RetrieveEvent returns the event for the request id, or nil if it doesn't exist
-func (engine *ECE) RetrieveEvent(reqId string) *Event {
-	engine.RLock()
-	e, exists := engine.Events[reqId]
-	engine.RUnlock()
+func (ece *ECE) RetrieveEvent(reqId string) *Event {
+	ece.RLock()
+	event, exists := ece.Events[reqId]
+	ece.RUnlock()
 
 	if !exists {
-		engine.Lock()
+		ece.Lock()
 		// Double check that someone hasn't inserted the event,
 		// while we didn't hold a lock
-		e, exists = engine.Events[reqId]
+		event, exists = ece.Events[reqId]
 		if exists {
-			engine.Unlock()
+			ece.Unlock()
 			// Other thread beat us to it, bail out
-			return e
+			return event
 		}
 
 		// New event, insert an empty record and schedule a write
-		e = &Event{}
+		event = &Event{}
 
-		engine.Events[reqId] = e
-		engine.Unlock()
+		ece.Events[reqId] = event
+		ece.Unlock()
 
-		go engine.DelayNotify(reqId)
+		go ece.DelayNotify(reqId)
 	}
 
-	return e
+	return event
 }
 
 // WriteEvent writes the event to the log
-func (engine *ECE) WriteEvent(reqId string) (err error) {
-	event := engine.RemoveEvent(reqId)
+func (ece *ECE) WriteEvent(reqId string) (err error) {
+	event := ece.RemoveEvent(reqId)
 
 	// Lock, to prevent any modification, but no real need to unlock
 	event.mutex.Lock()
@@ -281,30 +283,30 @@ func (engine *ECE) WriteEvent(reqId string) (err error) {
 		return err
 	}
 
-	engine.logger.Println(string(outputBytes))
+	ece.logger.Println(string(outputBytes))
 
 	return err
 }
 
 // RemoveEvent removes the event from the internal cache
-func (engine *ECE) RemoveEvent(reqId string) *Event {
-	engine.Lock()
-	e := engine.Events[reqId]
-	delete(engine.Events, reqId)
-	engine.Unlock()
+func (ece *ECE) RemoveEvent(reqId string) *Event {
+	ece.Lock()
+	e := ece.Events[reqId]
+	delete(ece.Events, reqId)
+	ece.Unlock()
 
 	return e
 }
 
 // AddEvent parses the event text, then looks it up in the internal cache.  If it's there, it adds the appropriate record to the existing event.  If not, it creates one and sets it's timeout.
-func (engine *ECE) AddEvent(message string) (err error) {
+func (ece *ECE) AddEvent(message string) (err error) {
 	waf, err := UnmarshalWaf(message) // Try to unmarshal the message into a WAF event
 	if err != nil {                   // It didn't unmarshal.  It's either a req event, or garbage
-		return engine.addWebEvent(message)
+		return ece.addWebEvent(message)
 	}
 
 	// Ok, it's a Waf event.  Process it as such.
-	event := engine.RetrieveEvent(waf.RequestId)
+	event := ece.RetrieveEvent(waf.RequestId)
 
 	// it does exist, add to it's waf list
 	//fmt.Printf("\tAdding Waf to %q\n", waf.RequestId)
@@ -315,38 +317,43 @@ func (engine *ECE) AddEvent(message string) (err error) {
 	return err
 }
 
-func (engine *ECE) addWebEvent(message string) (err error) {
+func (ece *ECE) addWebEvent(message string) (err error) {
 	req, err := UnmarshalWeb(message)
 
 	if err != nil { // It didn't unmarshal as a req event either.
-		err = fmt.Errorf("unparsable data: %s", message)
+		err = fmt.Errorf("unparsable data: %s\n", message)
 		return err
 	}
 
-	//log.Printf("WEb Event ID: %q", waf.RequestId)
+	if ece.Debug {
+		_, _ = fmt.Fprintf(os.Stderr, "Web Event ID: %q\n", req.RequestId)
+	}
 
-	event := engine.RetrieveEvent(req.RequestId)
+	event := ece.RetrieveEvent(req.RequestId)
 
 	// it does exist, add to it's req list
 	event.mutex.Lock()
-	//fmt.Printf("\tAdding Web to %q\n", req.RequestId)
+
+	if ece.Debug {
+		_, _ = fmt.Fprintf(os.Stderr, "\tAdding Web to %q\n", req.RequestId)
+	}
 	event.RequestEntries = append(event.RequestEntries, req)
 	event.mutex.Unlock()
 
 	return err
 }
 
-func (engine *ECE) Start(address string) {
+func (ece *ECE) Start() (err error) {
 	channel := make(syslog.LogPartsChannel)
 	handler := syslog.NewChannelHandler(channel)
 
 	go func(channel syslog.LogPartsChannel) {
 		for logParts := range channel {
 			message := logParts["message"].(string)
-			if engine.Debug {
-				_, _ = fmt.Fprintln(os.Stderr, message)
+			if ece.Debug {
+				_, _ = fmt.Fprintf(os.Stderr, "Message Received: %s", message)
 			}
-			err := engine.AddEvent(message)
+			err := ece.AddEvent(message)
 			if err != nil {
 				log.Printf("Error: %s", err)
 			}
@@ -357,58 +364,76 @@ func (engine *ECE) Start(address string) {
 	server.SetFormat(syslog.RFC5424)
 	server.SetHandler(handler)
 
+	// The syslog server package github.com/mcuardros/go-syslog appears to expect that if you use TLS at all, you're using it both in the Server sense, i.e. the Syslog server has a TLS cert on it and we have an encrypted tunnel between the client and the server, and also in that you're using TLS Client certs.  These are, unfortunately, 2 different things.
+	// The only way to use TLS on the server and encrypt the channel and NOT use client certs (Not sure that Fastly supports this) is to set this SetTlsPeerNameFunc to nil (or alternately make a function always return true)
+	server.SetTlsPeerNameFunc(nil)
+	//server.SetTlsPeerNameFunc(func(tlsConn *tls.Conn)(tlsPeer string, ok bool){
+	//	return "", true
+	//})
+
 	if os.Getenv(ECE_TLS_CRT_PATH_ENV_VAR) != "" && os.Getenv(ECE_TLS_KEY_PATH_ENV_VAR) != "" {
 		_, _ = fmt.Fprintf(os.Stderr, "TLS Enabled.  Key: %s  Cert: %s\n", os.Getenv(ECE_TLS_CRT_PATH_ENV_VAR), os.Getenv(ECE_TLS_KEY_PATH_ENV_VAR))
 
 		keypair, err := tls.LoadX509KeyPair(os.Getenv(ECE_TLS_CRT_PATH_ENV_VAR), os.Getenv(ECE_TLS_KEY_PATH_ENV_VAR))
 		if err != nil {
-			log.Fatalf("failed to load TLS Cert and Key from %s and %s", ECE_TLS_KEY_PATH_ENV_VAR, ECE_TLS_KEY_PATH_ENV_VAR)
+			err = errors.Wrapf(err, "failed to load TLS Cert and Key from %s and %s", ECE_TLS_KEY_PATH_ENV_VAR, ECE_TLS_KEY_PATH_ENV_VAR)
+			return err
 		}
 
 		config := tls.Config{
 			Certificates: []tls.Certificate{keypair},
 		}
 
-		err = server.ListenTCPTLS(address, &config)
+		err = server.ListenTCPTLS(ece.Address, &config)
 		if err != nil {
-			log.Fatalf("Couldn't start TLS TCP listener: %s", err)
+			err = errors.Wrapf(err, "failed to start TLS TCP listener")
+			return err
 		}
 
 	} else {
-		err := server.ListenTCP(address)
+		err := server.ListenTCP(ece.Address)
 		if err != nil {
-			log.Fatalf("Couldn't start TCP listener: %s", err)
+			err = errors.Wrapf(err, "failed to start TCP listener")
+			return err
 		}
 	}
 
-	err := server.Boot()
+	err = server.Boot()
 	if err != nil {
-		log.Fatalf("Server failed to boot: %s", err)
+		err = errors.Wrapf(err, "server failed to boot")
+		return err
 	}
 
-	engine.server = server
-}
+	ece.server = server
 
-// Run runs the syslog server that waits for events
-func (engine *ECE) Run(address string) {
 	_, _ = fmt.Fprint(os.Stderr, "Fastly WAF Event Correlation Engine starting!\n")
-	_, _ = fmt.Fprintf(os.Stderr, "Listening on %s\n", address)
-	_, _ = fmt.Fprintf(os.Stderr, "TTL: %f seconds\n", engine.Ttl.Seconds())
+	_, _ = fmt.Fprintf(os.Stderr, "Listening on %s\n", ece.Address)
+	_, _ = fmt.Fprintf(os.Stderr, "TTL: %f seconds\n", ece.Ttl.Seconds())
 
-	engine.Start(address)
-
-	engine.Wait()
+	return err
 }
 
-func (engine *ECE) Shutdown() {
-	err := engine.server.Kill()
+func (ece *ECE) Shutdown() (err error) {
+	err = ece.server.Kill()
 	if err != nil {
-		log.Fatalf("Failed to kill server: %s", err)
+		err = errors.Wrapf(err, "failed to kill server")
 	}
+
+	return err
 }
 
-func (engine *ECE) Wait() {
-	engine.server.Wait()
+func (ece *ECE) Wait() {
+	ece.server.Wait()
+}
+
+//DelayNotify is intended to run from a goroutine.  It sets a timer equal to the ttl, and then writes the event after the timer expires.
+func (ece *ECE) DelayNotify(reqId string) {
+	time.Sleep(ece.Ttl)
+
+	err := ece.WriteEvent(reqId)
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "error in DelayNotify: %s\n", err)
+	}
 }
 
 // UnmarshalWaf unmarshals the log json into a WafEntry Object
@@ -428,13 +453,4 @@ func UnmarshalWeb(message string) (web RequestEntry, err error) {
 		return RequestEntry{}, errors.New("Not a web entry")
 	}
 	return web, err
-}
-
-//DelayNotify is intended to run from a goroutine.  It sets a timer equal to the ttl, and then writes the event after the timer expires.
-func (ece *ECE) DelayNotify(reqId string) {
-	time.Sleep(ece.Ttl)
-
-	err := ece.WriteEvent(reqId)
-	if err != nil {
-	}
 }
