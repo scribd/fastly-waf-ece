@@ -364,6 +364,13 @@ func (ece *ECE) Start() (err error) {
 	server.SetFormat(syslog.RFC5424)
 	server.SetHandler(handler)
 
+	// The syslog server package github.com/mcuardros/go-syslog appears to expect that if you use TLS at all, you're using it both in the Server sense, i.e. the Syslog server has a TLS cert on it and we have an encrypted tunnel between the client and the server, and also in that you're using TLS Client certs.  These are, unfortunately, 2 different things.
+	// The only way to use TLS on the server and encrypt the channel and NOT use client certs (Not sure that Fastly supports this) is to set this SetTlsPeerNameFunc to nil (or alternately make a function always return true)
+	server.SetTlsPeerNameFunc(nil)
+	//server.SetTlsPeerNameFunc(func(tlsConn *tls.Conn)(tlsPeer string, ok bool){
+	//	return "", true
+	//})
+
 	if os.Getenv(ECE_TLS_CRT_PATH_ENV_VAR) != "" && os.Getenv(ECE_TLS_KEY_PATH_ENV_VAR) != "" {
 		_, _ = fmt.Fprintf(os.Stderr, "TLS Enabled.  Key: %s  Cert: %s\n", os.Getenv(ECE_TLS_CRT_PATH_ENV_VAR), os.Getenv(ECE_TLS_KEY_PATH_ENV_VAR))
 
@@ -375,7 +382,6 @@ func (ece *ECE) Start() (err error) {
 
 		config := tls.Config{
 			Certificates: []tls.Certificate{keypair},
-			ServerName:   "127.0.0.1",
 		}
 
 		err = server.ListenTCPTLS(ece.Address, &config)

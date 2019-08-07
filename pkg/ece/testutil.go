@@ -24,7 +24,7 @@ func testServer() (ece *ECE, logs *strings.Builder) {
 	ece = NewECE(500*time.Microsecond, "/dev/null", 0, 0, 0, false, address)
 	ece.logger = log.New(logs, "", 0)
 	ece.Address = address
-	ece.Debug = true
+	//ece.Debug = true
 	err = ece.Start()
 	if err != nil {
 		log.Fatalf("Test Server failed to start: %s", err)
@@ -44,12 +44,6 @@ func sendSyslog(structuredData string, messages []string, address string, tlsCon
 			err = errors.Wrap(err, "failed to dial tcp tls")
 			return err
 		}
-
-		//state := conn.ConnectionState()
-		//fmt.Printf("Connection: \n")
-		//fmt.Printf("  Server Name: %s\n", state.ServerName)
-		//fmt.Printf("  Handshake Finished: %v\n", state.HandshakeComplete)
-		//fmt.Printf("  Resumed: %v\n", state.DidResume)
 
 	} else {
 		conn, err = net.Dial("tcp", address)
