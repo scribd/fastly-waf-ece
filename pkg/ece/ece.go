@@ -229,6 +229,8 @@ func (ece *ECE) WriteEvent(reqId string) (err error) {
 			RespHeaderBytes:      event.RequestEntries[0].RespHeaderBytes,
 			RespBodyBytes:        event.RequestEntries[0].RespBodyBytes,
 			ThrottlingRule:       event.RequestEntries[0].ThrottlingRule,
+			TlsCipher:            event.RequestEntries[0].TlsCipher,
+			TlsProtocol:          event.RequestEntries[0].TlsProtocol,
 		}
 	} else {
 		outputEvent = OutputEvent{
