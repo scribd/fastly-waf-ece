@@ -59,6 +59,8 @@ func testWebEntry() RequestEntry {
 		RespHeaderBytes:      "620",
 		RespBodyBytes:        "77",
 		ThrottlingRule:       "password_reset",
+		TlsProtocol:          "",
+		TlsCipher:            "",
 	}
 }
 
@@ -95,6 +97,8 @@ func testOutputEvent() OutputEvent {
 		RespHeaderBytes:      "620",
 		RespBodyBytes:        "77",
 		ThrottlingRule:       "password_reset",
+		TlsProtocol:          "",
+		TlsCipher:            "",
 		Throttled:            1,
 
 		RuleIds: []int{0},
