@@ -71,6 +71,8 @@ type RequestEntry struct {
 	RespHeaderBytes      string `json:"resp_header_bytes"`
 	RespBodyBytes        string `json:"resp_body_bytes"`
 	ThrottlingRule       string `json:"throttling_rule"`
+	TlsProtocol          string `json:"tls_protocol"`
+	TlsCipher            string `json:"tls_cipher"`
 }
 
 // OutputEvent is simply the marshal format for the outputted merged event
@@ -109,6 +111,8 @@ type OutputEvent struct {
 	WafEvents            []OutputWaf `json:"waf_events"`
 	ThrottlingRule       string      `json:"throttling_rule"`
 	Throttled            int         `json:"throttled"`
+	TlsProtocol          string      `json:"tls_protocol"`
+	TlsCipher            string      `json:"tls_cipher"`
 }
 
 // OutputWaf is the output format for the waf event
