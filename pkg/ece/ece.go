@@ -327,7 +327,7 @@ func (ece *ECE) addWebEvent(message string) (err error) {
 	req, err := UnmarshalWeb(message)
 
 	if err != nil { // It didn't unmarshal as a req event either.
-		err = fmt.Errorf("unparsable data: %s\n", message)
+		err = fmt.Errorf("failed unmarshalling data in web event: %s\n", message)
 		return err
 	}
 

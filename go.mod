@@ -16,3 +16,5 @@ require (
 )
 
 replace gopkg.in/mcuadros/go-syslog.v2 => github.com/libc/go-syslog v0.0.0-20190315120441-9a827eb2069c
+
+go 1.13
